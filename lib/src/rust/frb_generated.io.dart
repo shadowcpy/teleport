@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
+import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
 abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
@@ -44,18 +45,44 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<String> dco_decode_StreamSink_String_Sse(dynamic raw);
-
-  @protected
   RustStreamSink<InboundFile> dco_decode_StreamSink_inbound_file_Sse(
     dynamic raw,
   );
 
   @protected
+  RustStreamSink<InboundPairingEvent>
+  dco_decode_StreamSink_inbound_pairing_event_Sse(dynamic raw);
+
+  @protected
+  RustStreamSink<OutboundPairingEvent>
+  dco_decode_StreamSink_outbound_pairing_event_Sse(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
+  CompletedPair dco_decode_box_autoadd_completed_pair(dynamic raw);
+
+  @protected
+  FailedPair dco_decode_box_autoadd_failed_pair(dynamic raw);
+
+  @protected
+  InboundPair dco_decode_box_autoadd_inbound_pair(dynamic raw);
+
+  @protected
+  CompletedPair dco_decode_completed_pair(dynamic raw);
+
+  @protected
+  FailedPair dco_decode_failed_pair(dynamic raw);
+
+  @protected
   InboundFile dco_decode_inbound_file(dynamic raw);
+
+  @protected
+  InboundPair dco_decode_inbound_pair(dynamic raw);
+
+  @protected
+  InboundPairingEvent dco_decode_inbound_pairing_event(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -67,6 +94,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  OutboundPairingEvent dco_decode_outbound_pairing_event(dynamic raw);
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
@@ -74,6 +104,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int dco_decode_u_8(dynamic raw);
+
+  @protected
+  U8Array6 dco_decode_u_8_array_6(dynamic raw);
 
   @protected
   void dco_decode_unit(dynamic raw);
@@ -103,12 +136,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<String> sse_decode_StreamSink_String_Sse(
+  RustStreamSink<InboundFile> sse_decode_StreamSink_inbound_file_Sse(
     SseDeserializer deserializer,
   );
 
   @protected
-  RustStreamSink<InboundFile> sse_decode_StreamSink_inbound_file_Sse(
+  RustStreamSink<InboundPairingEvent>
+  sse_decode_StreamSink_inbound_pairing_event_Sse(SseDeserializer deserializer);
+
+  @protected
+  RustStreamSink<OutboundPairingEvent>
+  sse_decode_StreamSink_outbound_pairing_event_Sse(
     SseDeserializer deserializer,
   );
 
@@ -116,7 +154,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  CompletedPair sse_decode_box_autoadd_completed_pair(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FailedPair sse_decode_box_autoadd_failed_pair(SseDeserializer deserializer);
+
+  @protected
+  InboundPair sse_decode_box_autoadd_inbound_pair(SseDeserializer deserializer);
+
+  @protected
+  CompletedPair sse_decode_completed_pair(SseDeserializer deserializer);
+
+  @protected
+  FailedPair sse_decode_failed_pair(SseDeserializer deserializer);
+
+  @protected
   InboundFile sse_decode_inbound_file(SseDeserializer deserializer);
+
+  @protected
+  InboundPair sse_decode_inbound_pair(SseDeserializer deserializer);
+
+  @protected
+  InboundPairingEvent sse_decode_inbound_pairing_event(
+    SseDeserializer deserializer,
+  );
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -130,6 +193,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  OutboundPairingEvent sse_decode_outbound_pairing_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   );
@@ -139,6 +207,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   int sse_decode_u_8(SseDeserializer deserializer);
+
+  @protected
+  U8Array6 sse_decode_u_8_array_6(SseDeserializer deserializer);
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
@@ -180,14 +251,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_StreamSink_String_Sse(
-    RustStreamSink<String> self,
+  void sse_encode_StreamSink_inbound_file_Sse(
+    RustStreamSink<InboundFile> self,
     SseSerializer serializer,
   );
 
   @protected
-  void sse_encode_StreamSink_inbound_file_Sse(
-    RustStreamSink<InboundFile> self,
+  void sse_encode_StreamSink_inbound_pairing_event_Sse(
+    RustStreamSink<InboundPairingEvent> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_outbound_pairing_event_Sse(
+    RustStreamSink<OutboundPairingEvent> self,
     SseSerializer serializer,
   );
 
@@ -195,7 +272,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_box_autoadd_completed_pair(
+    CompletedPair self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_failed_pair(
+    FailedPair self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_inbound_pair(
+    InboundPair self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_completed_pair(CompletedPair self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_failed_pair(FailedPair self, SseSerializer serializer);
+
+  @protected
   void sse_encode_inbound_file(InboundFile self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_inbound_pair(InboundPair self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_inbound_pairing_event(
+    InboundPairingEvent self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_prim_u_8_strict(
@@ -213,6 +323,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_outbound_pairing_event(
+    OutboundPairingEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -223,6 +339,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_u_8(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_u_8_array_6(U8Array6 self, SseSerializer serializer);
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);

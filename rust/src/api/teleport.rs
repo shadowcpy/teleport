@@ -8,7 +8,7 @@ use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::Subscriber
 use crate::{
     config::ConfigManager,
     frb_generated::StreamSink,
-    service::{Service, ServiceHandle, ServiceRequest, ServiceResponse},
+    service::{ActionRequest, ActionResponse, Service, ServiceHandle, UIRequest, UIResponse},
 };
 
 #[frb]
@@ -29,8 +29,8 @@ impl AppState {
     }
 
     pub async fn get_addr(&self) -> anyhow::Result<String> {
-        let response = self.service.call(ServiceRequest::GetLocalAddr).await?;
-        let ServiceResponse::GetLocalAddr(addr) = response else {
+        let response = self.service.call(UIRequest::GetLocalAddr).await?;
+        let UIResponse::GetLocalAddr(addr) = response.unwrap_ui_response() else {
             unreachable!()
         };
         let info = serde_json::to_string(&addr)?;
@@ -38,8 +38,8 @@ impl AppState {
     }
 
     pub async fn peers(&self) -> anyhow::Result<Vec<(String, String)>> {
-        let response = self.service.call(ServiceRequest::GetPeers).await?;
-        let ServiceResponse::GetPeers(peers) = response else {
+        let response = self.service.call(UIRequest::GetPeers).await?;
+        let UIResponse::GetPeers(peers) = response.unwrap_ui_response() else {
             unreachable!()
         };
         Ok(peers
@@ -50,11 +50,8 @@ impl AppState {
 
     pub async fn pair_with(&self, info: String) -> anyhow::Result<()> {
         let addr: EndpointAddr = serde_json::from_str(&info)?;
-        let response = self.service.call(ServiceRequest::PairWith(addr)).await?;
-        let ServiceResponse::PairWith(result) = response else {
-            unreachable!()
-        };
-        result
+        self.service.call(ActionRequest::PairWith(addr)).await?;
+        Ok(())
     }
 
     pub async fn send_file(&self, peer: String, name: String, path: String) -> anyhow::Result<()> {
@@ -62,17 +59,17 @@ impl AppState {
         let path = PathBuf::from(path);
         let response = self
             .service
-            .call(ServiceRequest::SendFile((id, name, path)))
+            .call(ActionRequest::SendFile { to: id, name, path })
             .await?;
-        let ServiceResponse::SendFile(result) = response else {
+        let ActionResponse::SendFile(result) = response.unwrap_action_response() else {
             unreachable!()
         };
         result
     }
 
     pub async fn get_target_dir(&self) -> anyhow::Result<Option<String>> {
-        let response = self.service.call(ServiceRequest::GetTargetDir).await?;
-        let ServiceResponse::GetTargetDir(dir) = response else {
+        let response = self.service.call(UIRequest::GetTargetDir).await?;
+        let UIResponse::GetTargetDir(dir) = response.unwrap_ui_response() else {
             unreachable!()
         };
         Ok(dir.map(|d| d.to_string_lossy().to_string()))
@@ -80,22 +77,33 @@ impl AppState {
 
     pub async fn set_target_dir(&self, dir: String) -> anyhow::Result<()> {
         let path = PathBuf::from(dir);
+        self.service.call(UIRequest::SetTargetDir(path)).await?;
+        Ok(())
+    }
+
+    pub async fn inbound_pairing_subscription(
+        &self,
+        stream: StreamSink<InboundPairingEvent>,
+    ) -> anyhow::Result<()> {
         self.service
-            .call(ServiceRequest::SetTargetDir(path))
+            .call(UIRequest::InPairingSubscription(stream))
             .await?;
         Ok(())
     }
 
-    pub async fn pairing_subscription(&self, stream: StreamSink<String>) -> anyhow::Result<()> {
+    pub async fn outbound_pairing_subscription(
+        &self,
+        stream: StreamSink<OutboundPairingEvent>,
+    ) -> anyhow::Result<()> {
         self.service
-            .call(ServiceRequest::PairingSubscription(stream))
+            .call(UIRequest::OutPairingSubscription(stream))
             .await?;
         Ok(())
     }
 
     pub async fn file_subscription(&self, stream: StreamSink<InboundFile>) -> anyhow::Result<()> {
         self.service
-            .call(ServiceRequest::FileSubscription(stream))
+            .call(UIRequest::FileSubscription(stream))
             .await?;
         Ok(())
     }
@@ -107,6 +115,40 @@ pub struct InboundFile {
     pub name: String,
     pub size: u64,
     pub path: String,
+}
+
+#[frb]
+pub enum InboundPairingEvent {
+    InboundPair(InboundPair),
+    CompletedPair(CompletedPair),
+    FailedPair(FailedPair),
+}
+
+#[frb]
+pub struct InboundPair {
+    pub peer: String,
+    pub friendly_name: String,
+    pub pairing_code: [u8; 6],
+}
+
+#[frb]
+pub enum OutboundPairingEvent {
+    Created([u8; 6]),
+    CompletedPair(CompletedPair),
+    FailedPair(FailedPair),
+}
+
+#[frb]
+pub struct CompletedPair {
+    pub peer: String,
+    pub friendly_name: String,
+}
+
+#[frb]
+pub struct FailedPair {
+    pub peer: String,
+    pub friendly_name: String,
+    pub reason: String,
 }
 
 #[frb(init)]

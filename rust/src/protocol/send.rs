@@ -6,7 +6,7 @@ use iroh_blobs::ticket::BlobTicket;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::service::{ServiceHandle, ServiceRequest};
+use crate::service::{BGRequest, ServiceHandle};
 
 pub const ALPN: &[u8] = b"teleport/send/0";
 
@@ -19,11 +19,11 @@ pub struct Offer {
 
 // The protocol definition:
 #[derive(Debug, Clone)]
-pub struct Send {
+pub struct SendAcceptor {
     pub handle: ServiceHandle,
 }
 
-impl ProtocolHandler for Send {
+impl ProtocolHandler for SendAcceptor {
     async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
         let (mut send, mut recv) = connection.accept_bi().await?;
 
@@ -34,7 +34,7 @@ impl ProtocolHandler for Send {
         info!("Got an offer: {offer:?}, from {}", connection.remote_id());
 
         self.handle
-            .call(ServiceRequest::IncomingOffer(offer))
+            .call(BGRequest::IncomingOffer(offer))
             .await
             .unwrap();
 

@@ -1,15 +1,17 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
+use derive_more::{From, Unwrap};
 use iroh::{
     discovery::mdns::MdnsDiscoveryBuilder,
     endpoint::{presets, Builder},
     protocol::Router,
-    EndpointAddr, EndpointId, PublicKey,
+    EndpointAddr, EndpointId,
 };
 use iroh_blobs::{
     api::downloader::Downloader, store::mem::MemStore, ticket::BlobTicket, BlobsProtocol,
 };
+use rand::Rng;
 use tokio::{
     spawn,
     sync::{
@@ -20,12 +22,16 @@ use tokio::{
 use tracing::{info, warn};
 
 use crate::{
-    api::teleport::InboundFile,
+    api::teleport::{
+        CompletedPair, FailedPair, InboundFile, InboundPair, InboundPairingEvent,
+        OutboundPairingEvent,
+    },
     config::{ConfigManager, Peer},
     frb_generated::StreamSink,
     protocol::{
-        pair::{self, Pair},
-        send::{self, Offer, Send},
+        framed::FramedBiStream,
+        pair::{self, Pair, PairAcceptor, MAX_SIZE},
+        send::{self, Offer, SendAcceptor},
     },
 };
 
@@ -60,13 +66,13 @@ impl Service {
             .accept(iroh_blobs::ALPN, blobs)
             .accept(
                 pair::ALPN.to_vec(),
-                Arc::new(Pair {
+                Arc::new(PairAcceptor {
                     handle: handle.clone(),
                 }),
             )
             .accept(
                 send::ALPN.to_vec(),
-                Arc::new(Send {
+                Arc::new(SendAcceptor {
                     handle: handle.clone(),
                 }),
             )
@@ -88,57 +94,118 @@ impl Service {
     }
 
     async fn main(mut self, mut channel: Receiver<RequestContainer>) {
-        let mut pairing_subscription: Option<StreamSink<String>> = None;
+        let mut in_pairing_subscription: Option<StreamSink<InboundPairingEvent>> = None;
+        let mut out_pairing_subscription: Option<StreamSink<OutboundPairingEvent>> = None;
         let mut file_subscription: Option<StreamSink<InboundFile>> = None;
+
+        let mut pending_incoming_pairings = HashMap::new();
 
         while let Some(msg) = channel.recv().await {
             let response = match msg.payload {
-                ServiceRequest::IncomingPair(public_key) => {
-                    self.incoming_pair(public_key, pairing_subscription.as_ref())
-                        .await;
-                    ServiceResponse::Ack
-                }
-                ServiceRequest::PairingSubscription(sub) => {
-                    pairing_subscription = Some(sub);
-                    ServiceResponse::Ack
-                }
-                ServiceRequest::FileSubscription(sub) => {
-                    file_subscription = Some(sub);
-                    ServiceResponse::Ack
-                }
-                ServiceRequest::PairWith(addr) => {
-                    let result = self.pair_with(addr).await;
-                    ServiceResponse::PairWith(result)
-                }
-                ServiceRequest::GetLocalAddr => {
-                    let addr = self.router.endpoint().addr();
-                    ServiceResponse::GetLocalAddr(addr)
-                }
-                ServiceRequest::GetPeers => {
-                    let peers = self.manager.peers.clone();
-                    ServiceResponse::GetPeers(peers)
-                }
-                ServiceRequest::IncomingOffer(offer) => {
-                    self.incoming_offer(offer, file_subscription.as_ref())
-                        .await
-                        .unwrap();
-                    ServiceResponse::Ack
-                }
-                ServiceRequest::SendFile((peer, name, path)) => {
-                    let result = self.send_file(peer, name, path).await;
-                    ServiceResponse::SendFile(result)
-                }
-                ServiceRequest::SetTargetDir(path_buf) => {
-                    self.manager.target_dir = Some(path_buf);
-                    self.manager.save().await.unwrap();
-                    ServiceResponse::Ack
-                }
-                ServiceRequest::GetTargetDir => {
-                    let dir = self.manager.target_dir.clone();
-                    ServiceResponse::GetTargetDir(dir)
-                }
+                Request::ActionRequest(action) => match action {
+                    ActionRequest::PairWith(addr) => {
+                        self.pair_with(addr, out_pairing_subscription.as_ref())
+                            .await
+                            .unwrap();
+                        Response::Ack
+                    }
+                    ActionRequest::SendFile { to, name, path } => {
+                        let result = self.send_file(to, name, path).await;
+                        ActionResponse::SendFile(result).into()
+                    }
+                },
+                Request::BGRequest(bg) => match bg {
+                    BGRequest::IncomingPair {
+                        from,
+                        friendly_name,
+                        pairing_code,
+                    } => {
+                        let (respond, later) = delayed_response();
+                        if let Some(ref notify) = in_pairing_subscription {
+                            let pair = InboundPair {
+                                peer: from.to_string(),
+                                friendly_name,
+                                pairing_code,
+                            };
+                            notify.add(InboundPairingEvent::InboundPair(pair)).unwrap();
+                            if let Some(stale) = pending_incoming_pairings.insert(from, respond) {
+                                stale.send(UIDoPair::Reject).unwrap();
+                            }
+                        }
+                        BGResponse::IncomingPair(later).into()
+                    }
+                    BGRequest::FinalizePair {
+                        with,
+                        friendly_name,
+                        outcome,
+                    } => {
+                        if let Err(e) = outcome {
+                            if let Some(ref notify) = in_pairing_subscription {
+                                notify
+                                    .add(InboundPairingEvent::FailedPair(FailedPair {
+                                        peer: with.to_string(),
+                                        friendly_name,
+                                        reason: e.to_string(),
+                                    }))
+                                    .unwrap();
+                            }
+                        } else {
+                            self.manager.peers.push(Peer {
+                                name: friendly_name.clone(),
+                                id: with,
+                            });
+                            self.manager.save().await.unwrap();
+                            if let Some(ref notify) = in_pairing_subscription {
+                                notify
+                                    .add(InboundPairingEvent::CompletedPair(CompletedPair {
+                                        peer: with.to_string(),
+                                        friendly_name,
+                                    }))
+                                    .unwrap();
+                            }
+                        }
+                        Response::Ack
+                    }
+                    BGRequest::IncomingOffer(offer) => {
+                        self.incoming_offer(offer, file_subscription.as_ref())
+                            .await
+                            .unwrap();
+                        Response::Ack
+                    }
+                },
+                Request::UIRequest(ui) => match ui {
+                    UIRequest::InPairingSubscription(sub) => {
+                        in_pairing_subscription = Some(sub);
+                        Response::Ack
+                    }
+                    UIRequest::OutPairingSubscription(sub) => {
+                        out_pairing_subscription = Some(sub);
+                        Response::Ack
+                    }
+                    UIRequest::FileSubscription(sub) => {
+                        file_subscription = Some(sub);
+                        Response::Ack
+                    }
+                    UIRequest::SetTargetDir(path_buf) => {
+                        self.manager.target_dir = Some(path_buf);
+                        self.manager.save().await.unwrap();
+                        Response::Ack
+                    }
+                    UIRequest::GetTargetDir => {
+                        let dir = self.manager.target_dir.clone();
+                        UIResponse::GetTargetDir(dir).into()
+                    }
+                    UIRequest::GetLocalAddr => {
+                        let addr = self.router.endpoint().addr();
+                        UIResponse::GetLocalAddr(addr).into()
+                    }
+                    UIRequest::GetPeers => {
+                        let peers = self.manager.peers.clone();
+                        UIResponse::GetPeers(peers).into()
+                    }
+                },
             };
-            msg.response.send(response).ok();
+            msg.response.send(response.into()).ok();
         }
     }
 
@@ -190,24 +257,11 @@ impl Service {
         Ok(())
     }
 
-    pub async fn incoming_pair(&mut self, id: PublicKey, sub: Option<&StreamSink<String>>) {
-        if self.manager.peers.iter().any(|p| p.id == id) {
-            warn!("Already paired to {id}, ignoring");
-            return;
-        }
-        self.manager.peers.push(Peer {
-            name: "Jürgen".into(),
-            id,
-        });
-
-        self.manager.save().await.unwrap();
-
-        if let Some(notify) = sub {
-            notify.add(id.to_string()).unwrap();
-        }
-    }
-
-    pub async fn pair_with(&mut self, addr: EndpointAddr) -> Result<()> {
+    pub async fn pair_with(
+        &mut self,
+        addr: EndpointAddr,
+        sub: Option<&StreamSink<OutboundPairingEvent>>,
+    ) -> Result<()> {
         let id = addr.id;
 
         if self.manager.peers.iter().any(|p| p.id == id) {
@@ -215,58 +269,145 @@ impl Service {
             return Ok(());
         }
 
+        let Some(sub) = sub else {
+            bail!("Cannot pair without subscription");
+        };
+
         let conn = self.router.endpoint().connect(addr, pair::ALPN).await?;
-        // Open a bidirectional QUIC stream
-        let (mut send, mut recv) = conn.open_bi().await?;
-        // Send some data to be echoed
-        send.write_all(b"Hello, world!").await?;
-        send.finish()?;
+        let (send, recv) = conn.open_bi().await?;
+        let mut framed = FramedBiStream::new((send, recv), MAX_SIZE);
 
-        // Receive the echo
-        let response = recv.read_to_end(1000).await?;
-        assert_eq!(&response, b"Hello, world!");
+        let rand: [u8; 6] = rand::rng().random();
 
-        // As the side receiving the last application data - say goodbye
-        conn.close(0u32.into(), b"bye!");
+        sub.add(OutboundPairingEvent::Created(rand)).unwrap();
 
-        info!("Paired to {}", id);
+        Pair::Helo {
+            friendly_name: self.manager.name.clone(),
+            pairing_code: rand,
+        }
+        .send(&mut framed)
+        .await?;
+
+        let response = Pair::recv(&mut framed).await?;
+
+        let name = match response {
+            Pair::FuckOff => {
+                sub.add(OutboundPairingEvent::FailedPair(FailedPair {
+                    peer: id.to_string(),
+                    friendly_name: String::new(),
+                    reason: "Fucked off".into(),
+                }))
+                .unwrap();
+                return Ok(());
+            }
+            Pair::NiceToMeetYou { friendly_name } => friendly_name,
+            Pair::WrongPairingCode => {
+                sub.add(OutboundPairingEvent::FailedPair(FailedPair {
+                    peer: id.to_string(),
+                    friendly_name: String::new(),
+                    reason: "Wrong Pairing Code".into(),
+                }))
+                .unwrap();
+                return Ok(());
+            }
+            _ => bail!("Invalid msg type"),
+        };
 
         self.manager.peers.push(Peer {
-            name: "Jürgen".into(),
+            name: name.clone(),
             id,
         });
-
         self.manager.save().await?;
+
+        sub.add(OutboundPairingEvent::CompletedPair(CompletedPair {
+            peer: id.to_string(),
+            friendly_name: name,
+        }))
+        .unwrap();
 
         Ok(())
     }
 }
 
-pub enum ServiceRequest {
+#[derive(From)]
+pub enum Request {
+    UIRequest(UIRequest),
+    ActionRequest(ActionRequest),
+    BGRequest(BGRequest),
+}
+
+pub enum ActionRequest {
     PairWith(EndpointAddr),
-    IncomingPair(EndpointId),
-    PairingSubscription(StreamSink<String>),
-    FileSubscription(StreamSink<InboundFile>),
+    SendFile {
+        to: EndpointId,
+        name: String,
+        path: PathBuf,
+    },
+}
+
+pub enum BGRequest {
+    IncomingPair {
+        from: EndpointId,
+        friendly_name: String,
+        pairing_code: [u8; 6],
+    },
+    FinalizePair {
+        with: EndpointId,
+        friendly_name: String,
+        outcome: Result<()>,
+    },
     IncomingOffer(Offer),
-    SendFile((EndpointId, String, PathBuf)),
+}
+
+pub enum UIRequest {
+    InPairingSubscription(StreamSink<InboundPairingEvent>),
+    OutPairingSubscription(StreamSink<OutboundPairingEvent>),
+    FileSubscription(StreamSink<InboundFile>),
     GetTargetDir,
     SetTargetDir(PathBuf),
     GetLocalAddr,
     GetPeers,
 }
 
-pub enum ServiceResponse {
-    PairWith(Result<()>),
-    GetLocalAddr(EndpointAddr),
-    GetPeers(Vec<Peer>),
-    SendFile(Result<()>),
-    GetTargetDir(Option<PathBuf>),
+pub struct RequestContainer {
+    payload: Request,
+    response: oneshot::Sender<Response>,
+}
+
+#[derive(From, Unwrap)]
+pub enum Response {
+    UIResponse(UIResponse),
+    BGResponse(BGResponse),
+    ActionResponse(ActionResponse),
     Ack,
 }
 
-pub struct RequestContainer {
-    payload: ServiceRequest,
-    response: oneshot::Sender<ServiceResponse>,
+pub enum UIResponse {
+    GetLocalAddr(EndpointAddr),
+    GetPeers(Vec<Peer>),
+    GetTargetDir(Option<PathBuf>),
+}
+
+pub enum BGResponse {
+    IncomingPair(DelayedResponse<UIDoPair>),
+}
+
+pub enum ActionResponse {
+    PairWith(Result<()>),
+    SendFile(Result<()>),
+}
+
+pub type DelayedResponse<T> = oneshot::Receiver<T>;
+
+pub fn delayed_response<T>() -> (oneshot::Sender<T>, oneshot::Receiver<T>) {
+    oneshot::channel()
+}
+
+#[derive(Debug)]
+pub enum UIDoPair {
+    Accept { our_name: String },
+    Reject,
+    WrongPairingCode,
 }
 
 #[derive(Debug, Clone)]
@@ -275,11 +416,11 @@ pub struct ServiceHandle {
 }
 
 impl ServiceHandle {
-    pub async fn call(&self, payload: ServiceRequest) -> Result<ServiceResponse> {
+    pub async fn call(&self, payload: impl Into<Request>) -> Result<Response> {
         let (snd, rcv) = oneshot::channel();
         self.sender
             .send(RequestContainer {
-                payload,
+                payload: payload.into(),
                 response: snd,
             })
             .await?;

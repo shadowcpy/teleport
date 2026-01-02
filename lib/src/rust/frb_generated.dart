@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Main entrypoint of the Rust API
@@ -66,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 2111774078;
+  int get rustContentHash => 1848196967;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -87,18 +88,20 @@ abstract class RustLibApi extends BaseApi {
     required AppState that,
   });
 
+  Stream<InboundPairingEvent>
+  crateApiTeleportAppStateInboundPairingSubscription({required AppState that});
+
   Future<AppState> crateApiTeleportAppStateInit({
     required String tempDir,
     required String persistenceDir,
   });
 
+  Stream<OutboundPairingEvent>
+  crateApiTeleportAppStateOutboundPairingSubscription({required AppState that});
+
   Future<void> crateApiTeleportAppStatePairWith({
     required AppState that,
     required String info,
-  });
-
-  Stream<String> crateApiTeleportAppStatePairingSubscription({
-    required AppState that,
   });
 
   Future<List<(String, String)>> crateApiTeleportAppStatePeers({
@@ -247,6 +250,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Stream<InboundPairingEvent>
+  crateApiTeleportAppStateInboundPairingSubscription({required AppState that}) {
+    final stream = RustStreamSink<InboundPairingEvent>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+              that,
+              serializer,
+            );
+            sse_encode_StreamSink_inbound_pairing_event_Sse(stream, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 4,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_AnyhowException,
+          ),
+          constMeta:
+              kCrateApiTeleportAppStateInboundPairingSubscriptionConstMeta,
+          argValues: [that, stream],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return stream.stream;
+  }
+
+  TaskConstMeta
+  get kCrateApiTeleportAppStateInboundPairingSubscriptionConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_inbound_pairing_subscription",
+        argNames: ["that", "stream"],
+      );
+
+  @override
   Future<AppState> crateApiTeleportAppStateInit({
     required String tempDir,
     required String persistenceDir,
@@ -260,7 +305,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -283,6 +328,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Stream<OutboundPairingEvent>
+  crateApiTeleportAppStateOutboundPairingSubscription({
+    required AppState that,
+  }) {
+    final stream = RustStreamSink<OutboundPairingEvent>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+              that,
+              serializer,
+            );
+            sse_encode_StreamSink_outbound_pairing_event_Sse(
+              stream,
+              serializer,
+            );
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 6,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_AnyhowException,
+          ),
+          constMeta:
+              kCrateApiTeleportAppStateOutboundPairingSubscriptionConstMeta,
+          argValues: [that, stream],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return stream.stream;
+  }
+
+  TaskConstMeta
+  get kCrateApiTeleportAppStateOutboundPairingSubscriptionConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_outbound_pairing_subscription",
+        argNames: ["that", "stream"],
+      );
+
+  @override
   Future<void> crateApiTeleportAppStatePairWith({
     required AppState that,
     required String info,
@@ -299,7 +391,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 7,
             port: port_,
           );
         },
@@ -321,47 +413,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Stream<String> crateApiTeleportAppStatePairingSubscription({
-    required AppState that,
-  }) {
-    final stream = RustStreamSink<String>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
-              that,
-              serializer,
-            );
-            sse_encode_StreamSink_String_Sse(stream, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 6,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_AnyhowException,
-          ),
-          constMeta: kCrateApiTeleportAppStatePairingSubscriptionConstMeta,
-          argValues: [that, stream],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return stream.stream;
-  }
-
-  TaskConstMeta get kCrateApiTeleportAppStatePairingSubscriptionConstMeta =>
-      const TaskConstMeta(
-        debugName: "AppState_pairing_subscription",
-        argNames: ["that", "stream"],
-      );
-
-  @override
   Future<List<(String, String)>> crateApiTeleportAppStatePeers({
     required AppState that,
   }) {
@@ -376,7 +427,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -415,7 +466,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 9,
             port: port_,
           );
         },
@@ -453,7 +504,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 10,
             port: port_,
           );
         },
@@ -483,7 +534,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 11,
             port: port_,
           );
         },
@@ -510,7 +561,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -570,12 +621,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<String> dco_decode_StreamSink_String_Sse(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    throw UnimplementedError();
-  }
-
-  @protected
   RustStreamSink<InboundFile> dco_decode_StreamSink_inbound_file_Sse(
     dynamic raw,
   ) {
@@ -584,9 +629,66 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<InboundPairingEvent>
+  dco_decode_StreamSink_inbound_pairing_event_Sse(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  RustStreamSink<OutboundPairingEvent>
+  dco_decode_StreamSink_outbound_pairing_event_Sse(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  CompletedPair dco_decode_box_autoadd_completed_pair(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_completed_pair(raw);
+  }
+
+  @protected
+  FailedPair dco_decode_box_autoadd_failed_pair(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_failed_pair(raw);
+  }
+
+  @protected
+  InboundPair dco_decode_box_autoadd_inbound_pair(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_inbound_pair(raw);
+  }
+
+  @protected
+  CompletedPair dco_decode_completed_pair(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return CompletedPair(
+      peer: dco_decode_String(arr[0]),
+      friendlyName: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  FailedPair dco_decode_failed_pair(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return FailedPair(
+      peer: dco_decode_String(arr[0]),
+      friendlyName: dco_decode_String(arr[1]),
+      reason: dco_decode_String(arr[2]),
+    );
   }
 
   @protected
@@ -601,6 +703,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       size: dco_decode_u_64(arr[2]),
       path: dco_decode_String(arr[3]),
     );
+  }
+
+  @protected
+  InboundPair dco_decode_inbound_pair(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return InboundPair(
+      peer: dco_decode_String(arr[0]),
+      friendlyName: dco_decode_String(arr[1]),
+      pairingCode: dco_decode_u_8_array_6(arr[2]),
+    );
+  }
+
+  @protected
+  InboundPairingEvent dco_decode_inbound_pairing_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return InboundPairingEvent_InboundPair(
+          dco_decode_box_autoadd_inbound_pair(raw[1]),
+        );
+      case 1:
+        return InboundPairingEvent_CompletedPair(
+          dco_decode_box_autoadd_completed_pair(raw[1]),
+        );
+      case 2:
+        return InboundPairingEvent_FailedPair(
+          dco_decode_box_autoadd_failed_pair(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -619,6 +755,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  OutboundPairingEvent dco_decode_outbound_pairing_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return OutboundPairingEvent_Created(dco_decode_u_8_array_6(raw[1]));
+      case 1:
+        return OutboundPairingEvent_CompletedPair(
+          dco_decode_box_autoadd_completed_pair(raw[1]),
+        );
+      case 2:
+        return OutboundPairingEvent_FailedPair(
+          dco_decode_box_autoadd_failed_pair(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -641,6 +796,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int dco_decode_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  U8Array6 dco_decode_u_8_array_6(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return U8Array6(dco_decode_list_prim_u_8_strict(raw));
   }
 
   @protected
@@ -699,7 +860,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<String> sse_decode_StreamSink_String_Sse(
+  RustStreamSink<InboundFile> sse_decode_StreamSink_inbound_file_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -707,7 +868,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<InboundFile> sse_decode_StreamSink_inbound_file_Sse(
+  RustStreamSink<InboundPairingEvent>
+  sse_decode_StreamSink_inbound_pairing_event_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
+  RustStreamSink<OutboundPairingEvent>
+  sse_decode_StreamSink_outbound_pairing_event_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -719,6 +890,49 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  CompletedPair sse_decode_box_autoadd_completed_pair(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_completed_pair(deserializer));
+  }
+
+  @protected
+  FailedPair sse_decode_box_autoadd_failed_pair(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_failed_pair(deserializer));
+  }
+
+  @protected
+  InboundPair sse_decode_box_autoadd_inbound_pair(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_inbound_pair(deserializer));
+  }
+
+  @protected
+  CompletedPair sse_decode_completed_pair(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_peer = sse_decode_String(deserializer);
+    var var_friendlyName = sse_decode_String(deserializer);
+    return CompletedPair(peer: var_peer, friendlyName: var_friendlyName);
+  }
+
+  @protected
+  FailedPair sse_decode_failed_pair(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_peer = sse_decode_String(deserializer);
+    var var_friendlyName = sse_decode_String(deserializer);
+    var var_reason = sse_decode_String(deserializer);
+    return FailedPair(
+      peer: var_peer,
+      friendlyName: var_friendlyName,
+      reason: var_reason,
+    );
   }
 
   @protected
@@ -734,6 +948,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       size: var_size,
       path: var_path,
     );
+  }
+
+  @protected
+  InboundPair sse_decode_inbound_pair(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_peer = sse_decode_String(deserializer);
+    var var_friendlyName = sse_decode_String(deserializer);
+    var var_pairingCode = sse_decode_u_8_array_6(deserializer);
+    return InboundPair(
+      peer: var_peer,
+      friendlyName: var_friendlyName,
+      pairingCode: var_pairingCode,
+    );
+  }
+
+  @protected
+  InboundPairingEvent sse_decode_inbound_pairing_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_box_autoadd_inbound_pair(deserializer);
+        return InboundPairingEvent_InboundPair(var_field0);
+      case 1:
+        var var_field0 = sse_decode_box_autoadd_completed_pair(deserializer);
+        return InboundPairingEvent_CompletedPair(var_field0);
+      case 2:
+        var var_field0 = sse_decode_box_autoadd_failed_pair(deserializer);
+        return InboundPairingEvent_FailedPair(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -769,6 +1018,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  OutboundPairingEvent sse_decode_outbound_pairing_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_u_8_array_6(deserializer);
+        return OutboundPairingEvent_Created(var_field0);
+      case 1:
+        var var_field0 = sse_decode_box_autoadd_completed_pair(deserializer);
+        return OutboundPairingEvent_CompletedPair(var_field0);
+      case 2:
+        var var_field0 = sse_decode_box_autoadd_failed_pair(deserializer);
+        return OutboundPairingEvent_FailedPair(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   ) {
@@ -788,6 +1059,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int sse_decode_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8();
+  }
+
+  @protected
+  U8Array6 sse_decode_u_8_array_6(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_prim_u_8_strict(deserializer);
+    return U8Array6(inner);
   }
 
   @protected
@@ -862,23 +1140,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_StreamSink_String_Sse(
-    RustStreamSink<String> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(
-      self.setupAndSerialize(
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_AnyhowException,
-        ),
-      ),
-      serializer,
-    );
-  }
-
-  @protected
   void sse_encode_StreamSink_inbound_file_Sse(
     RustStreamSink<InboundFile> self,
     SseSerializer serializer,
@@ -896,9 +1157,85 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_StreamSink_inbound_pairing_event_Sse(
+    RustStreamSink<InboundPairingEvent> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_inbound_pairing_event,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_StreamSink_outbound_pairing_event_Sse(
+    RustStreamSink<OutboundPairingEvent> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_outbound_pairing_event,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_completed_pair(
+    CompletedPair self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_completed_pair(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_failed_pair(
+    FailedPair self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_failed_pair(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_inbound_pair(
+    InboundPair self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_inbound_pair(self, serializer);
+  }
+
+  @protected
+  void sse_encode_completed_pair(CompletedPair self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.peer, serializer);
+    sse_encode_String(self.friendlyName, serializer);
+  }
+
+  @protected
+  void sse_encode_failed_pair(FailedPair self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.peer, serializer);
+    sse_encode_String(self.friendlyName, serializer);
+    sse_encode_String(self.reason, serializer);
   }
 
   @protected
@@ -908,6 +1245,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.name, serializer);
     sse_encode_u_64(self.size, serializer);
     sse_encode_String(self.path, serializer);
+  }
+
+  @protected
+  void sse_encode_inbound_pair(InboundPair self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.peer, serializer);
+    sse_encode_String(self.friendlyName, serializer);
+    sse_encode_u_8_array_6(self.pairingCode, serializer);
+  }
+
+  @protected
+  void sse_encode_inbound_pairing_event(
+    InboundPairingEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case InboundPairingEvent_InboundPair(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_box_autoadd_inbound_pair(field0, serializer);
+      case InboundPairingEvent_CompletedPair(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_box_autoadd_completed_pair(field0, serializer);
+      case InboundPairingEvent_FailedPair(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_box_autoadd_failed_pair(field0, serializer);
+    }
   }
 
   @protected
@@ -943,6 +1307,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_outbound_pairing_event(
+    OutboundPairingEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case OutboundPairingEvent_Created(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_u_8_array_6(field0, serializer);
+      case OutboundPairingEvent_CompletedPair(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_box_autoadd_completed_pair(field0, serializer);
+      case OutboundPairingEvent_FailedPair(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_box_autoadd_failed_pair(field0, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -962,6 +1345,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_u_8(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self);
+  }
+
+  @protected
+  void sse_encode_u_8_array_6(U8Array6 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(self.inner, serializer);
   }
 
   @protected
@@ -1016,11 +1405,18 @@ class AppStateImpl extends RustOpaque implements AppState {
   Future<String?> getTargetDir() =>
       RustLib.instance.api.crateApiTeleportAppStateGetTargetDir(that: this);
 
+  Stream<InboundPairingEvent> inboundPairingSubscription() => RustLib
+      .instance
+      .api
+      .crateApiTeleportAppStateInboundPairingSubscription(that: this);
+
+  Stream<OutboundPairingEvent> outboundPairingSubscription() => RustLib
+      .instance
+      .api
+      .crateApiTeleportAppStateOutboundPairingSubscription(that: this);
+
   Future<void> pairWith({required String info}) => RustLib.instance.api
       .crateApiTeleportAppStatePairWith(that: this, info: info);
-
-  Stream<String> pairingSubscription() => RustLib.instance.api
-      .crateApiTeleportAppStatePairingSubscription(that: this);
 
   Future<List<(String, String)>> peers() =>
       RustLib.instance.api.crateApiTeleportAppStatePeers(that: this);

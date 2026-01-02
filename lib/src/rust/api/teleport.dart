@@ -4,7 +4,10 @@
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
 import '../frb_generated.dart';
+import '../lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+part 'teleport.freezed.dart';
 
 Future<void> initLogging() =>
     RustLib.instance.api.crateApiTeleportInitLogging();
@@ -17,6 +20,8 @@ abstract class AppState implements RustOpaqueInterface {
 
   Future<String?> getTargetDir();
 
+  Stream<InboundPairingEvent> inboundPairingSubscription();
+
   static Future<AppState> init({
     required String tempDir,
     required String persistenceDir,
@@ -25,9 +30,9 @@ abstract class AppState implements RustOpaqueInterface {
     persistenceDir: persistenceDir,
   );
 
-  Future<void> pairWith({required String info});
+  Stream<OutboundPairingEvent> outboundPairingSubscription();
 
-  Stream<String> pairingSubscription();
+  Future<void> pairWith({required String info});
 
   Future<List<(String, String)>> peers();
 
@@ -38,6 +43,48 @@ abstract class AppState implements RustOpaqueInterface {
   });
 
   Future<void> setTargetDir({required String dir});
+}
+
+class CompletedPair {
+  final String peer;
+  final String friendlyName;
+
+  const CompletedPair({required this.peer, required this.friendlyName});
+
+  @override
+  int get hashCode => peer.hashCode ^ friendlyName.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CompletedPair &&
+          runtimeType == other.runtimeType &&
+          peer == other.peer &&
+          friendlyName == other.friendlyName;
+}
+
+class FailedPair {
+  final String peer;
+  final String friendlyName;
+  final String reason;
+
+  const FailedPair({
+    required this.peer,
+    required this.friendlyName,
+    required this.reason,
+  });
+
+  @override
+  int get hashCode => peer.hashCode ^ friendlyName.hashCode ^ reason.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FailedPair &&
+          runtimeType == other.runtimeType &&
+          peer == other.peer &&
+          friendlyName == other.friendlyName &&
+          reason == other.reason;
 }
 
 class InboundFile {
@@ -66,4 +113,53 @@ class InboundFile {
           name == other.name &&
           size == other.size &&
           path == other.path;
+}
+
+class InboundPair {
+  final String peer;
+  final String friendlyName;
+  final U8Array6 pairingCode;
+
+  const InboundPair({
+    required this.peer,
+    required this.friendlyName,
+    required this.pairingCode,
+  });
+
+  @override
+  int get hashCode =>
+      peer.hashCode ^ friendlyName.hashCode ^ pairingCode.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is InboundPair &&
+          runtimeType == other.runtimeType &&
+          peer == other.peer &&
+          friendlyName == other.friendlyName &&
+          pairingCode == other.pairingCode;
+}
+
+@freezed
+sealed class InboundPairingEvent with _$InboundPairingEvent {
+  const InboundPairingEvent._();
+
+  const factory InboundPairingEvent.inboundPair(InboundPair field0) =
+      InboundPairingEvent_InboundPair;
+  const factory InboundPairingEvent.completedPair(CompletedPair field0) =
+      InboundPairingEvent_CompletedPair;
+  const factory InboundPairingEvent.failedPair(FailedPair field0) =
+      InboundPairingEvent_FailedPair;
+}
+
+@freezed
+sealed class OutboundPairingEvent with _$OutboundPairingEvent {
+  const OutboundPairingEvent._();
+
+  const factory OutboundPairingEvent.created(U8Array6 field0) =
+      OutboundPairingEvent_Created;
+  const factory OutboundPairingEvent.completedPair(CompletedPair field0) =
+      OutboundPairingEvent_CompletedPair;
+  const factory OutboundPairingEvent.failedPair(FailedPair field0) =
+      OutboundPairingEvent_FailedPair;
 }

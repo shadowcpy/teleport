@@ -208,7 +208,7 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
       }
     }
 
-    widget.state.pairingSubscription().forEach((id) async {
+    widget.state.inboundPairingSubscription().forEach((id) async {
       var peers = await widget.state.peers();
       setState(() {
         _result = "INCOMING Pair $id";

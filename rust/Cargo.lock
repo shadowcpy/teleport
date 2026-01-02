@@ -3098,7 +3098,9 @@ name = "rust_lib_teleport"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "derive_more 2.1.1",
  "flutter_rust_bridge",
+ "futures-util",
  "iroh",
  "iroh-blobs",
  "postcard",
@@ -3106,6 +3108,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-util",
  "toml_edit 0.24.0+spec-1.1.0",
  "tracing",
  "tracing-android",

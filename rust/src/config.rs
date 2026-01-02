@@ -14,6 +14,7 @@ const CONFIG_FILE: &str = "storage.toml";
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub key: SecretKey,
+    pub name: String,
     pub target_dir: Option<PathBuf>,
     pub peers: Vec<Peer>,
 }
@@ -30,6 +31,7 @@ impl Default for Config {
             key: SecretKey::generate(&mut rng()),
             target_dir: None,
             peers: vec![],
+            name: "Unnamed".into(),
         }
     }
 }
