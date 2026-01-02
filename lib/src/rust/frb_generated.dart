@@ -66,7 +66,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1221775688;
+  int get rustContentHash => 2111774078;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -77,7 +77,15 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Stream<InboundFile> crateApiTeleportAppStateFileSubscription({
+    required AppState that,
+  });
+
   Future<String> crateApiTeleportAppStateGetAddr({required AppState that});
+
+  Future<String?> crateApiTeleportAppStateGetTargetDir({
+    required AppState that,
+  });
 
   Future<AppState> crateApiTeleportAppStateInit({
     required String tempDir,
@@ -95,6 +103,18 @@ abstract class RustLibApi extends BaseApi {
 
   Future<List<(String, String)>> crateApiTeleportAppStatePeers({
     required AppState that,
+  });
+
+  Future<void> crateApiTeleportAppStateSendFile({
+    required AppState that,
+    required String peer,
+    required String name,
+    required String path,
+  });
+
+  Future<void> crateApiTeleportAppStateSetTargetDir({
+    required AppState that,
+    required String dir,
   });
 
   Future<void> crateApiTeleportInitApp();
@@ -119,6 +139,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Stream<InboundFile> crateApiTeleportAppStateFileSubscription({
+    required AppState that,
+  }) {
+    final stream = RustStreamSink<InboundFile>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+              that,
+              serializer,
+            );
+            sse_encode_StreamSink_inbound_file_Sse(stream, serializer);
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 1,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_AnyhowException,
+          ),
+          constMeta: kCrateApiTeleportAppStateFileSubscriptionConstMeta,
+          argValues: [that, stream],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return stream.stream;
+  }
+
+  TaskConstMeta get kCrateApiTeleportAppStateFileSubscriptionConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_file_subscription",
+        argNames: ["that", "stream"],
+      );
+
+  @override
   Future<String> crateApiTeleportAppStateGetAddr({required AppState that}) {
     return handler.executeNormal(
       NormalTask(
@@ -131,7 +192,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -150,6 +211,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "AppState_get_addr", argNames: ["that"]);
 
   @override
+  Future<String?> crateApiTeleportAppStateGetTargetDir({
+    required AppState that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTeleportAppStateGetTargetDirConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTeleportAppStateGetTargetDirConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_get_target_dir",
+        argNames: ["that"],
+      );
+
+  @override
   Future<AppState> crateApiTeleportAppStateInit({
     required String tempDir,
     required String persistenceDir,
@@ -163,7 +260,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 4,
             port: port_,
           );
         },
@@ -202,7 +299,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 5,
             port: port_,
           );
         },
@@ -241,7 +338,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 4,
+              funcId: 6,
               port: port_,
             );
           },
@@ -279,7 +376,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 7,
             port: port_,
           );
         },
@@ -298,6 +395,86 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "AppState_peers", argNames: ["that"]);
 
   @override
+  Future<void> crateApiTeleportAppStateSendFile({
+    required AppState that,
+    required String peer,
+    required String name,
+    required String path,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          sse_encode_String(peer, serializer);
+          sse_encode_String(name, serializer);
+          sse_encode_String(path, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTeleportAppStateSendFileConstMeta,
+        argValues: [that, peer, name, path],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTeleportAppStateSendFileConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_send_file",
+        argNames: ["that", "peer", "name", "path"],
+      );
+
+  @override
+  Future<void> crateApiTeleportAppStateSetTargetDir({
+    required AppState that,
+    required String dir,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          sse_encode_String(dir, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTeleportAppStateSetTargetDirConstMeta,
+        argValues: [that, dir],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTeleportAppStateSetTargetDirConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_set_target_dir",
+        argNames: ["that", "dir"],
+      );
+
+  @override
   Future<void> crateApiTeleportInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -306,7 +483,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 10,
             port: port_,
           );
         },
@@ -333,7 +510,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 11,
             port: port_,
           );
         },
@@ -399,9 +576,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<InboundFile> dco_decode_StreamSink_inbound_file_Sse(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
+  }
+
+  @protected
+  InboundFile dco_decode_inbound_file(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return InboundFile(
+      peer: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      size: dco_decode_u_64(arr[2]),
+      path: dco_decode_String(arr[3]),
+    );
   }
 
   @protected
@@ -417,6 +616,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
   (String, String) dco_decode_record_string_string(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -424,6 +629,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       throw Exception('Expected 2 elements, got ${arr.length}');
     }
     return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
+  }
+
+  @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
   }
 
   @protected
@@ -496,10 +707,33 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  RustStreamSink<InboundFile> sse_decode_StreamSink_inbound_file_Sse(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  InboundFile sse_decode_inbound_file(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_peer = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_size = sse_decode_u_64(deserializer);
+    var var_path = sse_decode_String(deserializer);
+    return InboundFile(
+      peer: var_peer,
+      name: var_name,
+      size: var_size,
+      path: var_path,
+    );
   }
 
   @protected
@@ -524,6 +758,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   ) {
@@ -531,6 +776,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_field0 = sse_decode_String(deserializer);
     var var_field1 = sse_decode_String(deserializer);
     return (var_field0, var_field1);
+  }
+
+  @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
   }
 
   @protected
@@ -628,9 +879,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_StreamSink_inbound_file_Sse(
+    RustStreamSink<InboundFile> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_inbound_file,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_inbound_file(InboundFile self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.peer, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_u_64(self.size, serializer);
+    sse_encode_String(self.path, serializer);
   }
 
   @protected
@@ -656,6 +933,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -663,6 +950,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.$1, serializer);
     sse_encode_String(self.$2, serializer);
+  }
+
+  @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
   }
 
   @protected
@@ -714,8 +1007,14 @@ class AppStateImpl extends RustOpaque implements AppState {
         RustLib.instance.api.rust_arc_decrement_strong_count_AppStatePtr,
   );
 
+  Stream<InboundFile> fileSubscription() =>
+      RustLib.instance.api.crateApiTeleportAppStateFileSubscription(that: this);
+
   Future<String> getAddr() =>
       RustLib.instance.api.crateApiTeleportAppStateGetAddr(that: this);
+
+  Future<String?> getTargetDir() =>
+      RustLib.instance.api.crateApiTeleportAppStateGetTargetDir(that: this);
 
   Future<void> pairWith({required String info}) => RustLib.instance.api
       .crateApiTeleportAppStatePairWith(that: this, info: info);
@@ -725,4 +1024,18 @@ class AppStateImpl extends RustOpaque implements AppState {
 
   Future<List<(String, String)>> peers() =>
       RustLib.instance.api.crateApiTeleportAppStatePeers(that: this);
+
+  Future<void> sendFile({
+    required String peer,
+    required String name,
+    required String path,
+  }) => RustLib.instance.api.crateApiTeleportAppStateSendFile(
+    that: this,
+    peer: peer,
+    name: name,
+    path: path,
+  );
+
+  Future<void> setTargetDir({required String dir}) => RustLib.instance.api
+      .crateApiTeleportAppStateSetTargetDir(that: this, dir: dir);
 }

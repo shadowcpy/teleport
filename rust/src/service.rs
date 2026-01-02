@@ -7,7 +7,9 @@ use iroh::{
     protocol::Router,
     EndpointAddr, EndpointId, PublicKey,
 };
-use iroh_blobs::{api::downloader::Downloader, store::mem::MemStore, BlobsProtocol};
+use iroh_blobs::{
+    api::downloader::Downloader, store::mem::MemStore, ticket::BlobTicket, BlobsProtocol,
+};
 use tokio::{
     spawn,
     sync::{
@@ -18,9 +20,13 @@ use tokio::{
 use tracing::{info, warn};
 
 use crate::{
+    api::teleport::InboundFile,
     config::{ConfigManager, Peer},
     frb_generated::StreamSink,
-    protocol::{self, Pair},
+    protocol::{
+        pair::{self, Pair},
+        send::{self, Offer, Send},
+    },
 };
 
 pub struct Service {
@@ -40,7 +46,7 @@ impl Service {
             .await?;
 
         let (sender, receiver) = mpsc::channel(16);
-        let service_handle = ServiceHandle { sender };
+        let handle = ServiceHandle { sender };
 
         info!("EndpointID: {}", endpoint.id());
 
@@ -50,10 +56,20 @@ impl Service {
 
         let downloader = store.downloader(&endpoint);
 
-        let handle = service_handle.clone();
         let router = Router::builder(endpoint)
             .accept(iroh_blobs::ALPN, blobs)
-            .accept(protocol::ALPN.to_vec(), Arc::new(Pair { handle }))
+            .accept(
+                pair::ALPN.to_vec(),
+                Arc::new(Pair {
+                    handle: handle.clone(),
+                }),
+            )
+            .accept(
+                send::ALPN.to_vec(),
+                Arc::new(Send {
+                    handle: handle.clone(),
+                }),
+            )
             .spawn();
 
         info!("Router started");
@@ -68,11 +84,12 @@ impl Service {
 
         spawn(this.main(receiver));
 
-        Ok(service_handle)
+        Ok(handle)
     }
 
     async fn main(mut self, mut channel: Receiver<RequestContainer>) {
         let mut pairing_subscription: Option<StreamSink<String>> = None;
+        let mut file_subscription: Option<StreamSink<InboundFile>> = None;
 
         while let Some(msg) = channel.recv().await {
             let response = match msg.payload {
@@ -83,6 +100,10 @@ impl Service {
                 }
                 ServiceRequest::PairingSubscription(sub) => {
                     pairing_subscription = Some(sub);
+                    ServiceResponse::Ack
+                }
+                ServiceRequest::FileSubscription(sub) => {
+                    file_subscription = Some(sub);
                     ServiceResponse::Ack
                 }
                 ServiceRequest::PairWith(addr) => {
@@ -97,10 +118,76 @@ impl Service {
                     let peers = self.manager.peers.clone();
                     ServiceResponse::GetPeers(peers)
                 }
+                ServiceRequest::IncomingOffer(offer) => {
+                    self.incoming_offer(offer, file_subscription.as_ref())
+                        .await
+                        .unwrap();
+                    ServiceResponse::Ack
+                }
+                ServiceRequest::SendFile((peer, name, path)) => {
+                    let result = self.send_file(peer, name, path).await;
+                    ServiceResponse::SendFile(result)
+                }
+                ServiceRequest::SetTargetDir(path_buf) => {
+                    self.manager.target_dir = Some(path_buf);
+                    self.manager.save().await.unwrap();
+                    ServiceResponse::Ack
+                }
+                ServiceRequest::GetTargetDir => {
+                    let dir = self.manager.target_dir.clone();
+                    ServiceResponse::GetTargetDir(dir)
+                }
             };
-
             msg.response.send(response).ok();
         }
+    }
+
+    pub async fn send_file(&self, peer: EndpointId, name: String, path: PathBuf) -> Result<()> {
+        let tag = self.store.blobs().add_path(path).await?;
+        let endpoint_id = self.router.endpoint().id();
+        let ticket = BlobTicket::new(endpoint_id.into(), tag.hash, tag.format);
+
+        let conn = self.router.endpoint().connect(peer, send::ALPN).await?;
+        let (mut send, _) = conn.open_bi().await?;
+
+        let offer = Offer {
+            name,
+            size: 10,
+            blob_ticket: ticket,
+        };
+
+        let message = postcard::to_allocvec(&offer)?;
+
+        send.write_all(&message).await?;
+        send.finish()?;
+
+        conn.closed().await;
+
+        Ok(())
+    }
+
+    pub async fn incoming_offer(
+        &self,
+        offer: Offer,
+        sub: Option<&StreamSink<InboundFile>>,
+    ) -> Result<()> {
+        let ticket = offer.blob_ticket;
+        self.downloader
+            .download(ticket.hash(), Some(ticket.addr().id))
+            .await?;
+        let path = self.temp_dir.join(ticket.hash().to_string());
+        self.store.blobs().export(ticket.hash(), &path).await?;
+        if let Some(notify) = sub {
+            notify
+                .add(InboundFile {
+                    peer: ticket.addr().id.to_string(),
+                    name: offer.name,
+                    size: offer.size,
+                    path: path.to_string_lossy().to_string(),
+                })
+                .unwrap();
+        }
+        Ok(())
     }
 
     pub async fn incoming_pair(&mut self, id: PublicKey, sub: Option<&StreamSink<String>>) {
@@ -128,7 +215,7 @@ impl Service {
             return Ok(());
         }
 
-        let conn = self.router.endpoint().connect(addr, protocol::ALPN).await?;
+        let conn = self.router.endpoint().connect(addr, pair::ALPN).await?;
         // Open a bidirectional QUIC stream
         let (mut send, mut recv) = conn.open_bi().await?;
         // Send some data to be echoed
@@ -159,6 +246,11 @@ pub enum ServiceRequest {
     PairWith(EndpointAddr),
     IncomingPair(EndpointId),
     PairingSubscription(StreamSink<String>),
+    FileSubscription(StreamSink<InboundFile>),
+    IncomingOffer(Offer),
+    SendFile((EndpointId, String, PathBuf)),
+    GetTargetDir,
+    SetTargetDir(PathBuf),
     GetLocalAddr,
     GetPeers,
 }
@@ -167,6 +259,8 @@ pub enum ServiceResponse {
     PairWith(Result<()>),
     GetLocalAddr(EndpointAddr),
     GetPeers(Vec<Peer>),
+    SendFile(Result<()>),
+    GetTargetDir(Option<PathBuf>),
     Ack,
 }
 
@@ -192,20 +286,3 @@ impl ServiceHandle {
         Ok(rcv.await?)
     }
 }
-
-// pub async fn provide_file(&self, path: String) -> anyhow::Result<String> {
-//     let path = Path::new(&path);
-//     let tag = self.store.blobs().add_path(path).await?;
-//     let endpoint_id = self.router.endpoint().id();
-//     let ticket = BlobTicket::new(endpoint_id.into(), tag.hash, tag.format);
-//     Ok(ticket.to_string())
-// }
-// pub async fn download_file(&self, ticket: String) -> anyhow::Result<String> {
-//     let ticket: BlobTicket = ticket.parse()?;
-//     self.downloader
-//         .download(ticket.hash(), Some(ticket.addr().id))
-//         .await?;
-//     let path = self.temp_dir.join(ticket.hash().to_string());
-//     self.store.blobs().export(ticket.hash(), &path).await?;
-//     Ok(path.to_string_lossy().to_string())
-// }

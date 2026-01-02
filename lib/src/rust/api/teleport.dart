@@ -11,7 +11,11 @@ Future<void> initLogging() =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>>
 abstract class AppState implements RustOpaqueInterface {
+  Stream<InboundFile> fileSubscription();
+
   Future<String> getAddr();
+
+  Future<String?> getTargetDir();
 
   static Future<AppState> init({
     required String tempDir,
@@ -26,4 +30,40 @@ abstract class AppState implements RustOpaqueInterface {
   Stream<String> pairingSubscription();
 
   Future<List<(String, String)>> peers();
+
+  Future<void> sendFile({
+    required String peer,
+    required String name,
+    required String path,
+  });
+
+  Future<void> setTargetDir({required String dir});
+}
+
+class InboundFile {
+  final String peer;
+  final String name;
+  final BigInt size;
+  final String path;
+
+  const InboundFile({
+    required this.peer,
+    required this.name,
+    required this.size,
+    required this.path,
+  });
+
+  @override
+  int get hashCode =>
+      peer.hashCode ^ name.hashCode ^ size.hashCode ^ path.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is InboundFile &&
+          runtimeType == other.runtimeType &&
+          peer == other.peer &&
+          name == other.name &&
+          size == other.size &&
+          path == other.path;
 }

@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::OnceLock};
 
 use flutter_rust_bridge::frb;
-use iroh::EndpointAddr;
+use iroh::{EndpointAddr, EndpointId};
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -57,12 +57,56 @@ impl AppState {
         result
     }
 
+    pub async fn send_file(&self, peer: String, name: String, path: String) -> anyhow::Result<()> {
+        let id: EndpointId = peer.parse()?;
+        let path = PathBuf::from(path);
+        let response = self
+            .service
+            .call(ServiceRequest::SendFile((id, name, path)))
+            .await?;
+        let ServiceResponse::SendFile(result) = response else {
+            unreachable!()
+        };
+        result
+    }
+
+    pub async fn get_target_dir(&self) -> anyhow::Result<Option<String>> {
+        let response = self.service.call(ServiceRequest::GetTargetDir).await?;
+        let ServiceResponse::GetTargetDir(dir) = response else {
+            unreachable!()
+        };
+        Ok(dir.map(|d| d.to_string_lossy().to_string()))
+    }
+
+    pub async fn set_target_dir(&self, dir: String) -> anyhow::Result<()> {
+        let path = PathBuf::from(dir);
+        self.service
+            .call(ServiceRequest::SetTargetDir(path))
+            .await?;
+        Ok(())
+    }
+
     pub async fn pairing_subscription(&self, stream: StreamSink<String>) -> anyhow::Result<()> {
         self.service
             .call(ServiceRequest::PairingSubscription(stream))
             .await?;
         Ok(())
     }
+
+    pub async fn file_subscription(&self, stream: StreamSink<InboundFile>) -> anyhow::Result<()> {
+        self.service
+            .call(ServiceRequest::FileSubscription(stream))
+            .await?;
+        Ok(())
+    }
+}
+
+#[frb]
+pub struct InboundFile {
+    pub peer: String,
+    pub name: String,
+    pub size: u64,
+    pub path: String,
 }
 
 #[frb(init)]

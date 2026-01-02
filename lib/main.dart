@@ -53,6 +53,7 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
   List<(String, String)> _peers = [];
   String? _selectedPeer;
   String? _pairingInfo;
+  String? _targetDir;
 
   @override
   void initState() {
@@ -115,10 +116,22 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
                           if (result == null) {
                             return;
                           }
+                          var file = result.files.first;
+                          await widget.state.sendFile(
+                            peer: _selectedPeer!,
+                            name: file.name,
+                            path: file.path!,
+                          );
+                          setState(() {
+                            _result =
+                                "File \"${file.name}\" was successfully transferred";
+                          });
                         },
                   label: Text("Select"),
                   icon: Icon(Icons.send),
                 ),
+                SizedBox(height: 20),
+                if (_result != null) SelectableText("$_result"),
               ],
             ),
             Column(
@@ -175,16 +188,43 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
   Future<void> _initTeleport() async {
     var peers = await widget.state.peers();
     var pairingInfo = await widget.state.getAddr();
+    var targetDir = await widget.state.getTargetDir();
+
     setState(() {
       _peers = peers;
       _pairingInfo = pairingInfo;
+      _targetDir = targetDir;
     });
+
+    if (_targetDir == null) {
+      var target = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: "Select a folder",
+      );
+      if (target != null && target != "/") {
+        await widget.state.setTargetDir(dir: target);
+        setState(() {
+          _targetDir = target;
+        });
+      }
+    }
 
     widget.state.pairingSubscription().forEach((id) async {
       var peers = await widget.state.peers();
       setState(() {
         _result = "INCOMING Pair $id";
         _peers = peers;
+      });
+    });
+
+    widget.state.fileSubscription().forEach((file) async {
+      if (_targetDir == null) {
+        return;
+      }
+      var tempFile = File(file.path);
+      var finalFile = await tempFile.copy("$_targetDir/${file.name}");
+      await tempFile.delete(recursive: false);
+      setState(() {
+        _result = "Saved file in ${finalFile.path} (from ${file.peer})";
       });
     });
   }
