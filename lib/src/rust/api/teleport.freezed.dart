@@ -376,37 +376,37 @@ as FailedPair,
 }
 
 /// @nodoc
-mixin _$OutboundPairingEvent {
+mixin _$UIPairReaction {
 
- Object get field0;
+
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OutboundPairingEvent&&const DeepCollectionEquality().equals(other.field0, field0));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIPairReaction);
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(field0));
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'OutboundPairingEvent(field0: $field0)';
+  return 'UIPairReaction()';
 }
 
 
 }
 
 /// @nodoc
-class $OutboundPairingEventCopyWith<$Res>  {
-$OutboundPairingEventCopyWith(OutboundPairingEvent _, $Res Function(OutboundPairingEvent) __);
+class $UIPairReactionCopyWith<$Res>  {
+$UIPairReactionCopyWith(UIPairReaction _, $Res Function(UIPairReaction) __);
 }
 
 
-/// Adds pattern-matching-related methods to [OutboundPairingEvent].
-extension OutboundPairingEventPatterns on OutboundPairingEvent {
+/// Adds pattern-matching-related methods to [UIPairReaction].
+extension UIPairReactionPatterns on UIPairReaction {
 /// A variant of `map` that fallback to returning `orElse`.
 ///
 /// It is equivalent to doing:
@@ -419,13 +419,13 @@ extension OutboundPairingEventPatterns on OutboundPairingEvent {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( OutboundPairingEvent_Created value)?  created,TResult Function( OutboundPairingEvent_CompletedPair value)?  completedPair,TResult Function( OutboundPairingEvent_FailedPair value)?  failedPair,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UIPairReaction_Accept value)?  accept,TResult Function( UIPairReaction_Reject value)?  reject,TResult Function( UIPairReaction_WrongPairingCode value)?  wrongPairingCode,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
-case OutboundPairingEvent_Created() when created != null:
-return created(_that);case OutboundPairingEvent_CompletedPair() when completedPair != null:
-return completedPair(_that);case OutboundPairingEvent_FailedPair() when failedPair != null:
-return failedPair(_that);case _:
+case UIPairReaction_Accept() when accept != null:
+return accept(_that);case UIPairReaction_Reject() when reject != null:
+return reject(_that);case UIPairReaction_WrongPairingCode() when wrongPairingCode != null:
+return wrongPairingCode(_that);case _:
   return orElse();
 
 }
@@ -443,13 +443,13 @@ return failedPair(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( OutboundPairingEvent_Created value)  created,required TResult Function( OutboundPairingEvent_CompletedPair value)  completedPair,required TResult Function( OutboundPairingEvent_FailedPair value)  failedPair,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UIPairReaction_Accept value)  accept,required TResult Function( UIPairReaction_Reject value)  reject,required TResult Function( UIPairReaction_WrongPairingCode value)  wrongPairingCode,}){
 final _that = this;
 switch (_that) {
-case OutboundPairingEvent_Created():
-return created(_that);case OutboundPairingEvent_CompletedPair():
-return completedPair(_that);case OutboundPairingEvent_FailedPair():
-return failedPair(_that);}
+case UIPairReaction_Accept():
+return accept(_that);case UIPairReaction_Reject():
+return reject(_that);case UIPairReaction_WrongPairingCode():
+return wrongPairingCode(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -463,13 +463,13 @@ return failedPair(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( OutboundPairingEvent_Created value)?  created,TResult? Function( OutboundPairingEvent_CompletedPair value)?  completedPair,TResult? Function( OutboundPairingEvent_FailedPair value)?  failedPair,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UIPairReaction_Accept value)?  accept,TResult? Function( UIPairReaction_Reject value)?  reject,TResult? Function( UIPairReaction_WrongPairingCode value)?  wrongPairingCode,}){
 final _that = this;
 switch (_that) {
-case OutboundPairingEvent_Created() when created != null:
-return created(_that);case OutboundPairingEvent_CompletedPair() when completedPair != null:
-return completedPair(_that);case OutboundPairingEvent_FailedPair() when failedPair != null:
-return failedPair(_that);case _:
+case UIPairReaction_Accept() when accept != null:
+return accept(_that);case UIPairReaction_Reject() when reject != null:
+return reject(_that);case UIPairReaction_WrongPairingCode() when wrongPairingCode != null:
+return wrongPairingCode(_that);case _:
   return null;
 
 }
@@ -486,12 +486,12 @@ return failedPair(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( U8Array6 field0)?  created,TResult Function( CompletedPair field0)?  completedPair,TResult Function( FailedPair field0)?  failedPair,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String ourName)?  accept,TResult Function()?  reject,TResult Function()?  wrongPairingCode,required TResult orElse(),}) {final _that = this;
 switch (_that) {
-case OutboundPairingEvent_Created() when created != null:
-return created(_that.field0);case OutboundPairingEvent_CompletedPair() when completedPair != null:
-return completedPair(_that.field0);case OutboundPairingEvent_FailedPair() when failedPair != null:
-return failedPair(_that.field0);case _:
+case UIPairReaction_Accept() when accept != null:
+return accept(_that.ourName);case UIPairReaction_Reject() when reject != null:
+return reject();case UIPairReaction_WrongPairingCode() when wrongPairingCode != null:
+return wrongPairingCode();case _:
   return orElse();
 
 }
@@ -509,12 +509,12 @@ return failedPair(_that.field0);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( U8Array6 field0)  created,required TResult Function( CompletedPair field0)  completedPair,required TResult Function( FailedPair field0)  failedPair,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String ourName)  accept,required TResult Function()  reject,required TResult Function()  wrongPairingCode,}) {final _that = this;
 switch (_that) {
-case OutboundPairingEvent_Created():
-return created(_that.field0);case OutboundPairingEvent_CompletedPair():
-return completedPair(_that.field0);case OutboundPairingEvent_FailedPair():
-return failedPair(_that.field0);}
+case UIPairReaction_Accept():
+return accept(_that.ourName);case UIPairReaction_Reject():
+return reject();case UIPairReaction_WrongPairingCode():
+return wrongPairingCode();}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -528,12 +528,12 @@ return failedPair(_that.field0);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( U8Array6 field0)?  created,TResult? Function( CompletedPair field0)?  completedPair,TResult? Function( FailedPair field0)?  failedPair,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String ourName)?  accept,TResult? Function()?  reject,TResult? Function()?  wrongPairingCode,}) {final _that = this;
 switch (_that) {
-case OutboundPairingEvent_Created() when created != null:
-return created(_that.field0);case OutboundPairingEvent_CompletedPair() when completedPair != null:
-return completedPair(_that.field0);case OutboundPairingEvent_FailedPair() when failedPair != null:
-return failedPair(_that.field0);case _:
+case UIPairReaction_Accept() when accept != null:
+return accept(_that.ourName);case UIPairReaction_Reject() when reject != null:
+return reject();case UIPairReaction_WrongPairingCode() when wrongPairingCode != null:
+return wrongPairingCode();case _:
   return null;
 
 }
@@ -544,43 +544,43 @@ return failedPair(_that.field0);case _:
 /// @nodoc
 
 
-class OutboundPairingEvent_Created extends OutboundPairingEvent {
-  const OutboundPairingEvent_Created(this.field0): super._();
+class UIPairReaction_Accept extends UIPairReaction {
+  const UIPairReaction_Accept({required this.ourName}): super._();
   
 
-@override final  U8Array6 field0;
+ final  String ourName;
 
-/// Create a copy of OutboundPairingEvent
+/// Create a copy of UIPairReaction
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$OutboundPairingEvent_CreatedCopyWith<OutboundPairingEvent_Created> get copyWith => _$OutboundPairingEvent_CreatedCopyWithImpl<OutboundPairingEvent_Created>(this, _$identity);
+$UIPairReaction_AcceptCopyWith<UIPairReaction_Accept> get copyWith => _$UIPairReaction_AcceptCopyWithImpl<UIPairReaction_Accept>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OutboundPairingEvent_Created&&const DeepCollectionEquality().equals(other.field0, field0));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIPairReaction_Accept&&(identical(other.ourName, ourName) || other.ourName == ourName));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(field0));
+int get hashCode => Object.hash(runtimeType,ourName);
 
 @override
 String toString() {
-  return 'OutboundPairingEvent.created(field0: $field0)';
+  return 'UIPairReaction.accept(ourName: $ourName)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $OutboundPairingEvent_CreatedCopyWith<$Res> implements $OutboundPairingEventCopyWith<$Res> {
-  factory $OutboundPairingEvent_CreatedCopyWith(OutboundPairingEvent_Created value, $Res Function(OutboundPairingEvent_Created) _then) = _$OutboundPairingEvent_CreatedCopyWithImpl;
+abstract mixin class $UIPairReaction_AcceptCopyWith<$Res> implements $UIPairReactionCopyWith<$Res> {
+  factory $UIPairReaction_AcceptCopyWith(UIPairReaction_Accept value, $Res Function(UIPairReaction_Accept) _then) = _$UIPairReaction_AcceptCopyWithImpl;
 @useResult
 $Res call({
- U8Array6 field0
+ String ourName
 });
 
 
@@ -588,19 +588,19 @@ $Res call({
 
 }
 /// @nodoc
-class _$OutboundPairingEvent_CreatedCopyWithImpl<$Res>
-    implements $OutboundPairingEvent_CreatedCopyWith<$Res> {
-  _$OutboundPairingEvent_CreatedCopyWithImpl(this._self, this._then);
+class _$UIPairReaction_AcceptCopyWithImpl<$Res>
+    implements $UIPairReaction_AcceptCopyWith<$Res> {
+  _$UIPairReaction_AcceptCopyWithImpl(this._self, this._then);
 
-  final OutboundPairingEvent_Created _self;
-  final $Res Function(OutboundPairingEvent_Created) _then;
+  final UIPairReaction_Accept _self;
+  final $Res Function(UIPairReaction_Accept) _then;
 
-/// Create a copy of OutboundPairingEvent
+/// Create a copy of UIPairReaction
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
-  return _then(OutboundPairingEvent_Created(
-null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
-as U8Array6,
+@pragma('vm:prefer-inline') $Res call({Object? ourName = null,}) {
+  return _then(UIPairReaction_Accept(
+ourName: null == ourName ? _self.ourName : ourName // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -610,133 +610,65 @@ as U8Array6,
 /// @nodoc
 
 
-class OutboundPairingEvent_CompletedPair extends OutboundPairingEvent {
-  const OutboundPairingEvent_CompletedPair(this.field0): super._();
+class UIPairReaction_Reject extends UIPairReaction {
+  const UIPairReaction_Reject(): super._();
   
 
-@override final  CompletedPair field0;
 
-/// Create a copy of OutboundPairingEvent
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$OutboundPairingEvent_CompletedPairCopyWith<OutboundPairingEvent_CompletedPair> get copyWith => _$OutboundPairingEvent_CompletedPairCopyWithImpl<OutboundPairingEvent_CompletedPair>(this, _$identity);
+
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OutboundPairingEvent_CompletedPair&&(identical(other.field0, field0) || other.field0 == field0));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIPairReaction_Reject);
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,field0);
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'OutboundPairingEvent.completedPair(field0: $field0)';
+  return 'UIPairReaction.reject()';
 }
 
 
 }
 
-/// @nodoc
-abstract mixin class $OutboundPairingEvent_CompletedPairCopyWith<$Res> implements $OutboundPairingEventCopyWith<$Res> {
-  factory $OutboundPairingEvent_CompletedPairCopyWith(OutboundPairingEvent_CompletedPair value, $Res Function(OutboundPairingEvent_CompletedPair) _then) = _$OutboundPairingEvent_CompletedPairCopyWithImpl;
-@useResult
-$Res call({
- CompletedPair field0
-});
 
 
-
-
-}
-/// @nodoc
-class _$OutboundPairingEvent_CompletedPairCopyWithImpl<$Res>
-    implements $OutboundPairingEvent_CompletedPairCopyWith<$Res> {
-  _$OutboundPairingEvent_CompletedPairCopyWithImpl(this._self, this._then);
-
-  final OutboundPairingEvent_CompletedPair _self;
-  final $Res Function(OutboundPairingEvent_CompletedPair) _then;
-
-/// Create a copy of OutboundPairingEvent
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
-  return _then(OutboundPairingEvent_CompletedPair(
-null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
-as CompletedPair,
-  ));
-}
-
-
-}
 
 /// @nodoc
 
 
-class OutboundPairingEvent_FailedPair extends OutboundPairingEvent {
-  const OutboundPairingEvent_FailedPair(this.field0): super._();
+class UIPairReaction_WrongPairingCode extends UIPairReaction {
+  const UIPairReaction_WrongPairingCode(): super._();
   
 
-@override final  FailedPair field0;
 
-/// Create a copy of OutboundPairingEvent
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$OutboundPairingEvent_FailedPairCopyWith<OutboundPairingEvent_FailedPair> get copyWith => _$OutboundPairingEvent_FailedPairCopyWithImpl<OutboundPairingEvent_FailedPair>(this, _$identity);
+
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OutboundPairingEvent_FailedPair&&(identical(other.field0, field0) || other.field0 == field0));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIPairReaction_WrongPairingCode);
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,field0);
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'OutboundPairingEvent.failedPair(field0: $field0)';
+  return 'UIPairReaction.wrongPairingCode()';
 }
 
 
 }
 
-/// @nodoc
-abstract mixin class $OutboundPairingEvent_FailedPairCopyWith<$Res> implements $OutboundPairingEventCopyWith<$Res> {
-  factory $OutboundPairingEvent_FailedPairCopyWith(OutboundPairingEvent_FailedPair value, $Res Function(OutboundPairingEvent_FailedPair) _then) = _$OutboundPairingEvent_FailedPairCopyWithImpl;
-@useResult
-$Res call({
- FailedPair field0
-});
 
 
-
-
-}
-/// @nodoc
-class _$OutboundPairingEvent_FailedPairCopyWithImpl<$Res>
-    implements $OutboundPairingEvent_FailedPairCopyWith<$Res> {
-  _$OutboundPairingEvent_FailedPairCopyWithImpl(this._self, this._then);
-
-  final OutboundPairingEvent_FailedPair _self;
-  final $Res Function(OutboundPairingEvent_FailedPair) _then;
-
-/// Create a copy of OutboundPairingEvent
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
-  return _then(OutboundPairingEvent_FailedPair(
-null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
-as FailedPair,
-  ));
-}
-
-
-}
 
 // dart format on

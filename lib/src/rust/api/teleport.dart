@@ -9,6 +9,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'teleport.freezed.dart';
 
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
+
 Future<void> initLogging() =>
     RustLib.instance.api.crateApiTeleportInitLogging();
 
@@ -20,8 +22,6 @@ abstract class AppState implements RustOpaqueInterface {
 
   Future<String?> getTargetDir();
 
-  Stream<InboundPairingEvent> inboundPairingSubscription();
-
   static Future<AppState> init({
     required String tempDir,
     required String persistenceDir,
@@ -30,11 +30,16 @@ abstract class AppState implements RustOpaqueInterface {
     persistenceDir: persistenceDir,
   );
 
-  Stream<OutboundPairingEvent> outboundPairingSubscription();
+  Future<void> pairWith({required String info, required U8Array6 pairingCode});
 
-  Future<void> pairWith({required String info});
+  Stream<InboundPairingEvent> pairingSubscription();
 
   Future<List<(String, String)>> peers();
+
+  Future<void> reactToPairing({
+    required String peer,
+    required UIPairReaction reaction,
+  });
 
   Future<void> sendFile({
     required String peer,
@@ -153,13 +158,12 @@ sealed class InboundPairingEvent with _$InboundPairingEvent {
 }
 
 @freezed
-sealed class OutboundPairingEvent with _$OutboundPairingEvent {
-  const OutboundPairingEvent._();
+sealed class UIPairReaction with _$UIPairReaction {
+  const UIPairReaction._();
 
-  const factory OutboundPairingEvent.created(U8Array6 field0) =
-      OutboundPairingEvent_Created;
-  const factory OutboundPairingEvent.completedPair(CompletedPair field0) =
-      OutboundPairingEvent_CompletedPair;
-  const factory OutboundPairingEvent.failedPair(FailedPair field0) =
-      OutboundPairingEvent_FailedPair;
+  const factory UIPairReaction.accept({required String ourName}) =
+      UIPairReaction_Accept;
+  const factory UIPairReaction.reject() = UIPairReaction_Reject;
+  const factory UIPairReaction.wrongPairingCode() =
+      UIPairReaction_WrongPairingCode;
 }

@@ -2,18 +2,19 @@ use std::{path::PathBuf, sync::OnceLock};
 
 use flutter_rust_bridge::frb;
 use iroh::{EndpointAddr, EndpointId};
+use kameo::actor::{ActorRef, Spawn};
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     config::ConfigManager,
     frb_generated::StreamSink,
-    service::{ActionRequest, ActionResponse, Service, ServiceHandle, UIRequest, UIResponse},
+    service::{ActionRequest, ActionResponse, Dispatcher, DispatcherArgs, UIRequest, UIResponse},
 };
 
 #[frb]
 pub struct AppState {
-    service: ServiceHandle,
+    dispatcher: ActorRef<Dispatcher>,
 }
 
 #[frb]
@@ -21,16 +22,17 @@ impl AppState {
     pub async fn init(temp_dir: String, persistence_dir: String) -> anyhow::Result<Self> {
         let temp_dir = PathBuf::from(temp_dir);
         let persistence_dir = PathBuf::from(persistence_dir);
-        let config = ConfigManager::get_or_init(persistence_dir).await?;
+        let manager = ConfigManager::get_or_init(persistence_dir).await?;
 
-        let service = Service::spawn(config, temp_dir).await?;
+        let args = DispatcherArgs { manager, temp_dir };
+        let dispatcher = Dispatcher::spawn(args);
 
-        Ok(AppState { service })
+        Ok(AppState { dispatcher })
     }
 
     pub async fn get_addr(&self) -> anyhow::Result<String> {
-        let response = self.service.call(UIRequest::GetLocalAddr).await?;
-        let UIResponse::GetLocalAddr(addr) = response.unwrap_ui_response() else {
+        let response = self.dispatcher.ask(UIRequest::GetLocalAddr).await?;
+        let UIResponse::GetLocalAddr(addr) = response else {
             unreachable!()
         };
         let info = serde_json::to_string(&addr)?;
@@ -38,8 +40,8 @@ impl AppState {
     }
 
     pub async fn peers(&self) -> anyhow::Result<Vec<(String, String)>> {
-        let response = self.service.call(UIRequest::GetPeers).await?;
-        let UIResponse::GetPeers(peers) = response.unwrap_ui_response() else {
+        let response = self.dispatcher.ask(UIRequest::GetPeers).await?;
+        let UIResponse::GetPeers(peers) = response else {
             unreachable!()
         };
         Ok(peers
@@ -48,9 +50,11 @@ impl AppState {
             .collect())
     }
 
-    pub async fn pair_with(&self, info: String) -> anyhow::Result<()> {
-        let addr: EndpointAddr = serde_json::from_str(&info)?;
-        self.service.call(ActionRequest::PairWith(addr)).await?;
+    pub async fn pair_with(&self, info: String, pairing_code: [u8; 6]) -> anyhow::Result<()> {
+        let peer: EndpointAddr = serde_json::from_str(&info)?;
+        self.dispatcher
+            .tell(ActionRequest::PairWith { peer, pairing_code })
+            .await?;
         Ok(())
     }
 
@@ -58,18 +62,18 @@ impl AppState {
         let id: EndpointId = peer.parse()?;
         let path = PathBuf::from(path);
         let response = self
-            .service
-            .call(ActionRequest::SendFile { to: id, name, path })
+            .dispatcher
+            .ask(ActionRequest::SendFile { to: id, name, path })
             .await?;
-        let ActionResponse::SendFile(result) = response.unwrap_action_response() else {
+        let ActionResponse::SendFile(result) = response else {
             unreachable!()
         };
         result
     }
 
     pub async fn get_target_dir(&self) -> anyhow::Result<Option<String>> {
-        let response = self.service.call(UIRequest::GetTargetDir).await?;
-        let UIResponse::GetTargetDir(dir) = response.unwrap_ui_response() else {
+        let response = self.dispatcher.ask(UIRequest::GetTargetDir).await?;
+        let UIResponse::GetTargetDir(dir) = response else {
             unreachable!()
         };
         Ok(dir.map(|d| d.to_string_lossy().to_string()))
@@ -77,33 +81,35 @@ impl AppState {
 
     pub async fn set_target_dir(&self, dir: String) -> anyhow::Result<()> {
         let path = PathBuf::from(dir);
-        self.service.call(UIRequest::SetTargetDir(path)).await?;
+        self.dispatcher.tell(UIRequest::SetTargetDir(path)).await?;
         Ok(())
     }
 
-    pub async fn inbound_pairing_subscription(
+    pub async fn react_to_pairing(
         &self,
-        stream: StreamSink<InboundPairingEvent>,
+        peer: String,
+        reaction: UIPairReaction,
     ) -> anyhow::Result<()> {
-        self.service
-            .call(UIRequest::InPairingSubscription(stream))
+        let peer: EndpointId = peer.parse()?;
+        self.dispatcher
+            .tell(UIRequest::ReactToPairing { peer, reaction })
             .await?;
         Ok(())
     }
 
-    pub async fn outbound_pairing_subscription(
+    pub async fn pairing_subscription(
         &self,
-        stream: StreamSink<OutboundPairingEvent>,
+        stream: StreamSink<InboundPairingEvent>,
     ) -> anyhow::Result<()> {
-        self.service
-            .call(UIRequest::OutPairingSubscription(stream))
+        self.dispatcher
+            .tell(UIRequest::PairingSubscription(stream))
             .await?;
         Ok(())
     }
 
     pub async fn file_subscription(&self, stream: StreamSink<InboundFile>) -> anyhow::Result<()> {
-        self.service
-            .call(UIRequest::FileSubscription(stream))
+        self.dispatcher
+            .tell(UIRequest::FileSubscription(stream))
             .await?;
         Ok(())
     }
@@ -132,13 +138,6 @@ pub struct InboundPair {
 }
 
 #[frb]
-pub enum OutboundPairingEvent {
-    Created([u8; 6]),
-    CompletedPair(CompletedPair),
-    FailedPair(FailedPair),
-}
-
-#[frb]
 pub struct CompletedPair {
     pub peer: String,
     pub friendly_name: String,
@@ -149,6 +148,14 @@ pub struct FailedPair {
     pub peer: String,
     pub friendly_name: String,
     pub reason: String,
+}
+
+#[frb]
+#[derive(Debug)]
+pub enum UIPairReaction {
+    Accept { our_name: String },
+    Reject,
+    WrongPairingCode,
 }
 
 #[frb(init)]

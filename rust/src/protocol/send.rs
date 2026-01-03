@@ -3,10 +3,11 @@ use iroh::{
     protocol::{AcceptError, ProtocolHandler},
 };
 use iroh_blobs::ticket::BlobTicket;
+use kameo::actor::ActorRef;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::service::{BGRequest, ServiceHandle};
+use crate::service::{BGRequest, Dispatcher};
 
 pub const ALPN: &[u8] = b"teleport/send/0";
 
@@ -20,7 +21,7 @@ pub struct Offer {
 // The protocol definition:
 #[derive(Debug, Clone)]
 pub struct SendAcceptor {
-    pub handle: ServiceHandle,
+    pub dispatcher: ActorRef<Dispatcher>,
 }
 
 impl ProtocolHandler for SendAcceptor {
@@ -33,8 +34,8 @@ impl ProtocolHandler for SendAcceptor {
 
         info!("Got an offer: {offer:?}, from {}", connection.remote_id());
 
-        self.handle
-            .call(BGRequest::IncomingOffer(offer))
+        self.dispatcher
+            .tell(BGRequest::IncomingOffer(offer))
             .await
             .unwrap();
 

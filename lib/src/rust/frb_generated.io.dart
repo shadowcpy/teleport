@@ -54,10 +54,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   dco_decode_StreamSink_inbound_pairing_event_Sse(dynamic raw);
 
   @protected
-  RustStreamSink<OutboundPairingEvent>
-  dco_decode_StreamSink_outbound_pairing_event_Sse(dynamic raw);
-
-  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -68,6 +64,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   InboundPair dco_decode_box_autoadd_inbound_pair(dynamic raw);
+
+  @protected
+  UIPairReaction dco_decode_box_autoadd_ui_pair_reaction(dynamic raw);
 
   @protected
   CompletedPair dco_decode_completed_pair(dynamic raw);
@@ -94,9 +93,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
-  OutboundPairingEvent dco_decode_outbound_pairing_event(dynamic raw);
-
-  @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
 
   @protected
@@ -107,6 +103,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   U8Array6 dco_decode_u_8_array_6(dynamic raw);
+
+  @protected
+  UIPairReaction dco_decode_ui_pair_reaction(dynamic raw);
 
   @protected
   void dco_decode_unit(dynamic raw);
@@ -145,12 +144,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   sse_decode_StreamSink_inbound_pairing_event_Sse(SseDeserializer deserializer);
 
   @protected
-  RustStreamSink<OutboundPairingEvent>
-  sse_decode_StreamSink_outbound_pairing_event_Sse(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
@@ -163,6 +156,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   InboundPair sse_decode_box_autoadd_inbound_pair(SseDeserializer deserializer);
+
+  @protected
+  UIPairReaction sse_decode_box_autoadd_ui_pair_reaction(
+    SseDeserializer deserializer,
+  );
 
   @protected
   CompletedPair sse_decode_completed_pair(SseDeserializer deserializer);
@@ -193,11 +191,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
-  OutboundPairingEvent sse_decode_outbound_pairing_event(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   (String, String) sse_decode_record_string_string(
     SseDeserializer deserializer,
   );
@@ -210,6 +203,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   U8Array6 sse_decode_u_8_array_6(SseDeserializer deserializer);
+
+  @protected
+  UIPairReaction sse_decode_ui_pair_reaction(SseDeserializer deserializer);
 
   @protected
   void sse_decode_unit(SseDeserializer deserializer);
@@ -263,12 +259,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_StreamSink_outbound_pairing_event_Sse(
-    RustStreamSink<OutboundPairingEvent> self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
@@ -286,6 +276,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_box_autoadd_inbound_pair(
     InboundPair self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_ui_pair_reaction(
+    UIPairReaction self,
     SseSerializer serializer,
   );
 
@@ -323,12 +319,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
-  void sse_encode_outbound_pairing_event(
-    OutboundPairingEvent self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_record_string_string(
     (String, String) self,
     SseSerializer serializer,
@@ -342,6 +332,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_u_8_array_6(U8Array6 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ui_pair_reaction(
+    UIPairReaction self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_unit(void self, SseSerializer serializer);

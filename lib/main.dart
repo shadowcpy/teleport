@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_common.dart';
 
 import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/frb_generated.dart';
@@ -8,6 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:teleport/src/rust/lib.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -160,7 +163,37 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
                               Navigator.pop(context);
                               var info = result.barcodes.first.rawValue;
                               if (info != null) {
-                                await widget.state.pairWith(info: info);
+                                var random = Random();
+                                var numbers = Iterable.generate(6, (_) {
+                                  return random.nextInt(10);
+                                }).toList();
+                                showModalBottomSheet(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return SizedBox(
+                                      height: 100,
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            CircularProgressIndicator(),
+                                            SizedBox(height: 10),
+                                            Text(
+                                              "Compare Code ${numbers.join()} on target device",
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                                await widget.state.pairWith(
+                                  info: info,
+                                  pairingCode: U8Array6(
+                                    Uint8List.fromList(numbers),
+                                  ),
+                                );
                                 var peers = await widget.state.peers();
                                 setState(() {
                                   _peers = peers;
@@ -208,10 +241,68 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
       }
     }
 
-    widget.state.inboundPairingSubscription().forEach((id) async {
+    widget.state.pairingSubscription().forEach((event) async {
+      event.when(
+        inboundPair: (pair) {
+          showModalBottomSheet(
+            context: context,
+            builder: (BuildContext context) {
+              return SizedBox(
+                height: 200,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Incoming Pairing Request"),
+                    SizedBox(height: 10),
+                    Text("Device: ${pair.friendlyName}"),
+                    SizedBox(height: 10),
+                    Text("Code: ${pair.pairingCode.join()}"),
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        FilledButton.tonal(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await widget.state.reactToPairing(
+                              peer: pair.peer,
+                              reaction: UIPairReaction.accept(ourName: ""),
+                            );
+                          },
+                          child: Text("Accept"),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await widget.state.reactToPairing(
+                              peer: pair.peer,
+                              reaction: UIPairReaction.reject(),
+                            );
+                          },
+                          child: Text("Reject"),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+        completedPair: (cp) {
+          setState(() {
+            _result = "Paired with ${cp.friendlyName} (${cp.peer})";
+          });
+        },
+        failedPair: (fp) {
+          setState(() {
+            _result = "Failed to pair with ${fp.friendlyName}: ${fp.reason}";
+          });
+        },
+      );
+
       var peers = await widget.state.peers();
       setState(() {
-        _result = "INCOMING Pair $id";
         _peers = peers;
       });
     });
