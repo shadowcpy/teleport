@@ -7,8 +7,11 @@ import 'frb_generated.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PromiseReactor < UIPairReaction >>>
-abstract class PromiseReactorUiPairReaction implements RustOpaqueInterface {}
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise < Result < () , String > >>>
+abstract class UiPromiseResultString implements RustOpaqueInterface {}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver < UIPairReaction >>>
+abstract class UiResolverUiPairReaction implements RustOpaqueInterface {}
 
 class U8Array6 extends NonGrowableListView<int> {
   static const arraySize = 6;

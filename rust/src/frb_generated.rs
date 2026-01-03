@@ -28,7 +28,7 @@
 use crate::api::teleport::*;
 use crate::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
-use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
 
 // Section: boilerplate
@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -298205073;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 937523829;
 
 // Section: executor
 
@@ -350,7 +350,7 @@ fn wire__crate__api__teleport__AppState_pairing_subscription_impl(
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>,
             >>::sse_decode(&mut deserializer);
             let api_stream = <StreamSink<
-                crate::api::teleport::InboundPairingEvent,
+                crate::api::teleport::InboundPair,
                 flutter_rust_bridge::for_generated::SseCodec,
             >>::sse_decode(&mut deserializer);
             deserializer.end();
@@ -590,14 +590,52 @@ fn wire__crate__api__teleport__inbound_pair_react_impl(
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
             let api_that = <crate::api::teleport::InboundPair>::sse_decode(&mut deserializer);
-            let api_value = <crate::api::teleport::UIPairReaction>::sse_decode(&mut deserializer);
+            let api_reaction =
+                <crate::api::teleport::UIPairReaction>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, ()>(
                     (move || async move {
                         let output_ok = Result::<_, ()>::Ok({
-                            crate::api::teleport::InboundPair::react(&api_that, api_value).await;
+                            crate::api::teleport::InboundPair::react(&api_that, api_reaction).await;
                         })?;
+                        Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
+fn wire__crate__api__teleport__inbound_pair_result_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "inbound_pair_result",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_that = <crate::api::teleport::InboundPair>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, String>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::teleport::InboundPair::result(&api_that).await?;
                         Ok(output_ok)
                     })()
                     .await,
@@ -681,7 +719,10 @@ flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
     flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
-    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Resolver<UIPairReaction>>
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+    flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver<UIPairReaction>>
 );
 
 // Section: dart2rust
@@ -694,11 +735,21 @@ impl SseDecode for flutter_rust_bridge::for_generated::anyhow::Error {
     }
 }
 
-impl SseDecode for RustAutoOpaqueMoi<Resolver<UIPairReaction>> {
+impl SseDecode for RustAutoOpaqueMoi<UIPromise<Result<(), String>>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <RustOpaqueMoi<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Resolver<UIPairReaction>>,
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
+        >>::sse_decode(deserializer);
+        return flutter_rust_bridge::for_generated::rust_auto_opaque_explicit_decode(inner);
+    }
+}
+
+impl SseDecode for RustAutoOpaqueMoi<UIResolver<UIPairReaction>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver<UIPairReaction>>,
         >>::sse_decode(deserializer);
         return flutter_rust_bridge::for_generated::rust_auto_opaque_explicit_decode(inner);
     }
@@ -726,7 +777,19 @@ impl SseDecode
 
 impl SseDecode
     for RustOpaqueMoi<
-        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Resolver<UIPairReaction>>,
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <usize>::sse_decode(deserializer);
+        return decode_rust_opaque_moi(inner);
+    }
+}
+
+impl SseDecode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver<UIPairReaction>>,
     >
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -747,10 +810,7 @@ impl SseDecode
 }
 
 impl SseDecode
-    for StreamSink<
-        crate::api::teleport::InboundPairingEvent,
-        flutter_rust_bridge::for_generated::SseCodec,
-    >
+    for StreamSink<crate::api::teleport::InboundPair, flutter_rust_bridge::for_generated::SseCodec>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -764,32 +824,6 @@ impl SseDecode for String {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <Vec<u8>>::sse_decode(deserializer);
         return String::from_utf8(inner).unwrap();
-    }
-}
-
-impl SseDecode for crate::api::teleport::CompletedPair {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_peer = <String>::sse_decode(deserializer);
-        let mut var_friendlyName = <String>::sse_decode(deserializer);
-        return crate::api::teleport::CompletedPair {
-            peer: var_peer,
-            friendly_name: var_friendlyName,
-        };
-    }
-}
-
-impl SseDecode for crate::api::teleport::FailedPair {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_peer = <String>::sse_decode(deserializer);
-        let mut var_friendlyName = <String>::sse_decode(deserializer);
-        let mut var_reason = <String>::sse_decode(deserializer);
-        return crate::api::teleport::FailedPair {
-            peer: var_peer,
-            friendly_name: var_friendlyName,
-            reason: var_reason,
-        };
     }
 }
 
@@ -822,39 +856,17 @@ impl SseDecode for crate::api::teleport::InboundPair {
         let mut var_peer = <String>::sse_decode(deserializer);
         let mut var_friendlyName = <String>::sse_decode(deserializer);
         let mut var_pairingCode = <[u8; 6]>::sse_decode(deserializer);
-        let mut var_reactor =
-            <RustAutoOpaqueMoi<Resolver<UIPairReaction>>>::sse_decode(deserializer);
+        let mut var_reaction =
+            <RustAutoOpaqueMoi<UIResolver<UIPairReaction>>>::sse_decode(deserializer);
+        let mut var_outcome =
+            <RustAutoOpaqueMoi<UIPromise<Result<(), String>>>>::sse_decode(deserializer);
         return crate::api::teleport::InboundPair {
             peer: var_peer,
             friendly_name: var_friendlyName,
             pairing_code: var_pairingCode,
-            reactor: var_reactor,
+            reaction: var_reaction,
+            outcome: var_outcome,
         };
-    }
-}
-
-impl SseDecode for crate::api::teleport::InboundPairingEvent {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut tag_ = <i32>::sse_decode(deserializer);
-        match tag_ {
-            0 => {
-                let mut var_field0 = <crate::api::teleport::InboundPair>::sse_decode(deserializer);
-                return crate::api::teleport::InboundPairingEvent::InboundPair(var_field0);
-            }
-            1 => {
-                let mut var_field0 =
-                    <crate::api::teleport::CompletedPair>::sse_decode(deserializer);
-                return crate::api::teleport::InboundPairingEvent::CompletedPair(var_field0);
-            }
-            2 => {
-                let mut var_field0 = <crate::api::teleport::FailedPair>::sse_decode(deserializer);
-                return crate::api::teleport::InboundPairingEvent::FailedPair(var_field0);
-            }
-            _ => {
-                unimplemented!("");
-            }
-        }
     }
 }
 
@@ -997,8 +1009,11 @@ fn pde_ffi_dispatcher_primary_impl(
         10 => {
             wire__crate__api__teleport__inbound_pair_react_impl(port, ptr, rust_vec_len, data_len)
         }
-        11 => wire__crate__api__teleport__init_app_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__teleport__init_logging_impl(port, ptr, rust_vec_len, data_len),
+        11 => {
+            wire__crate__api__teleport__inbound_pair_result_impl(port, ptr, rust_vec_len, data_len)
+        }
+        12 => wire__crate__api__teleport__init_app_impl(port, ptr, rust_vec_len, data_len),
+        13 => wire__crate__api__teleport__init_logging_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -1033,49 +1048,6 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<AppState>> for AppState {
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::teleport::CompletedPair {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.peer.into_into_dart().into_dart(),
-            self.friendly_name.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::teleport::CompletedPair
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::CompletedPair>
-    for crate::api::teleport::CompletedPair
-{
-    fn into_into_dart(self) -> crate::api::teleport::CompletedPair {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::teleport::FailedPair {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.peer.into_into_dart().into_dart(),
-            self.friendly_name.into_into_dart().into_dart(),
-            self.reason.into_into_dart().into_dart(),
-        ]
-        .into_dart()
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::teleport::FailedPair
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::FailedPair>
-    for crate::api::teleport::FailedPair
-{
-    fn into_into_dart(self) -> crate::api::teleport::FailedPair {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::teleport::InboundFile {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -1105,7 +1077,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::teleport::InboundPair {
             self.peer.into_into_dart().into_dart(),
             self.friendly_name.into_into_dart().into_dart(),
             self.pairing_code.into_into_dart().into_dart(),
-            self.reactor.into_into_dart().into_dart(),
+            self.reaction.into_into_dart().into_dart(),
+            self.outcome.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -1118,36 +1091,6 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::InboundPair>
     for crate::api::teleport::InboundPair
 {
     fn into_into_dart(self) -> crate::api::teleport::InboundPair {
-        self
-    }
-}
-// Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::teleport::InboundPairingEvent {
-    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        match self {
-            crate::api::teleport::InboundPairingEvent::InboundPair(field0) => {
-                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::teleport::InboundPairingEvent::CompletedPair(field0) => {
-                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            crate::api::teleport::InboundPairingEvent::FailedPair(field0) => {
-                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
-            }
-            _ => {
-                unimplemented!("");
-            }
-        }
-    }
-}
-impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::teleport::InboundPairingEvent
-{
-}
-impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::InboundPairingEvent>
-    for crate::api::teleport::InboundPairingEvent
-{
-    fn into_into_dart(self) -> crate::api::teleport::InboundPairingEvent {
         self
     }
 }
@@ -1181,11 +1124,23 @@ impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     }
 }
 
-impl SseEncode for RustAutoOpaqueMoi<Resolver<UIPairReaction>> {
+impl SseEncode for RustAutoOpaqueMoi<UIPromise<Result<(), String>>> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <RustOpaqueMoi<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Resolver<UIPairReaction>>,
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
+        >>::sse_encode(
+            flutter_rust_bridge::for_generated::rust_auto_opaque_explicit_encode(self),
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for RustAutoOpaqueMoi<UIResolver<UIPairReaction>> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <RustOpaqueMoi<
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver<UIPairReaction>>,
         >>::sse_encode(
             flutter_rust_bridge::for_generated::rust_auto_opaque_explicit_encode(self),
             serializer,
@@ -1213,7 +1168,20 @@ impl SseEncode
 
 impl SseEncode
     for RustOpaqueMoi<
-        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<Resolver<UIPairReaction>>,
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
+    >
+{
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        let (ptr, size) = self.sse_encode_raw();
+        <usize>::sse_encode(ptr, serializer);
+        <i32>::sse_encode(size, serializer);
+    }
+}
+
+impl SseEncode
+    for RustOpaqueMoi<
+        flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver<UIPairReaction>>,
     >
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -1234,10 +1202,7 @@ impl SseEncode
 }
 
 impl SseEncode
-    for StreamSink<
-        crate::api::teleport::InboundPairingEvent,
-        flutter_rust_bridge::for_generated::SseCodec,
-    >
+    for StreamSink<crate::api::teleport::InboundPair, flutter_rust_bridge::for_generated::SseCodec>
 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1249,23 +1214,6 @@ impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<u8>>::sse_encode(self.into_bytes(), serializer);
-    }
-}
-
-impl SseEncode for crate::api::teleport::CompletedPair {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.peer, serializer);
-        <String>::sse_encode(self.friendly_name, serializer);
-    }
-}
-
-impl SseEncode for crate::api::teleport::FailedPair {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.peer, serializer);
-        <String>::sse_encode(self.friendly_name, serializer);
-        <String>::sse_encode(self.reason, serializer);
     }
 }
 
@@ -1292,30 +1240,8 @@ impl SseEncode for crate::api::teleport::InboundPair {
         <String>::sse_encode(self.peer, serializer);
         <String>::sse_encode(self.friendly_name, serializer);
         <[u8; 6]>::sse_encode(self.pairing_code, serializer);
-        <RustAutoOpaqueMoi<Resolver<UIPairReaction>>>::sse_encode(self.reactor, serializer);
-    }
-}
-
-impl SseEncode for crate::api::teleport::InboundPairingEvent {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        match self {
-            crate::api::teleport::InboundPairingEvent::InboundPair(field0) => {
-                <i32>::sse_encode(0, serializer);
-                <crate::api::teleport::InboundPair>::sse_encode(field0, serializer);
-            }
-            crate::api::teleport::InboundPairingEvent::CompletedPair(field0) => {
-                <i32>::sse_encode(1, serializer);
-                <crate::api::teleport::CompletedPair>::sse_encode(field0, serializer);
-            }
-            crate::api::teleport::InboundPairingEvent::FailedPair(field0) => {
-                <i32>::sse_encode(2, serializer);
-                <crate::api::teleport::FailedPair>::sse_encode(field0, serializer);
-            }
-            _ => {
-                unimplemented!("");
-            }
-        }
+        <RustAutoOpaqueMoi<UIResolver<UIPairReaction>>>::sse_encode(self.reaction, serializer);
+        <RustAutoOpaqueMoi<UIPromise<Result<(), String>>>>::sse_encode(self.outcome, serializer);
     }
 }
 
@@ -1436,7 +1362,7 @@ mod io {
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
     };
-    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
 
     // Section: boilerplate
@@ -1458,25 +1384,35 @@ mod io {
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_teleport_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    pub extern "C" fn frbgen_teleport_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Resolver<UIPairReaction>,
-            >,
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
         >::increment_strong_count(ptr as _);
     }
 
     #[unsafe(no_mangle)]
-    pub extern "C" fn frbgen_teleport_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    pub extern "C" fn frbgen_teleport_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Resolver<UIPairReaction>,
-            >,
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
         >::decrement_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_teleport_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver < UIPairReaction >>>::increment_strong_count(ptr as _);
+    }
+
+    #[unsafe(no_mangle)]
+    pub extern "C" fn frbgen_teleport_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver < UIPairReaction >>>::decrement_strong_count(ptr as _);
     }
 }
 #[cfg(not(target_family = "wasm"))]
@@ -1498,7 +1434,7 @@ mod web {
     };
     use flutter_rust_bridge::for_generated::wasm_bindgen;
     use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
-    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
 
     // Section: boilerplate
@@ -1520,25 +1456,35 @@ mod web {
     }
 
     #[wasm_bindgen]
-    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Resolver<UIPairReaction>,
-            >,
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
         >::increment_strong_count(ptr as _);
     }
 
     #[wasm_bindgen]
-    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
         ptr: *const std::ffi::c_void,
     ) {
         MoiArc::<
-            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<
-                Resolver<UIPairReaction>,
-            >,
+            flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIPromise<Result<(), String>>>,
         >::decrement_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver < UIPairReaction >>>::increment_strong_count(ptr as _);
+    }
+
+    #[wasm_bindgen]
+    pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+        ptr: *const std::ffi::c_void,
+    ) {
+        MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<UIResolver < UIPairReaction >>>::decrement_strong_count(ptr as _);
     }
 }
 #[cfg(target_family = "wasm")]

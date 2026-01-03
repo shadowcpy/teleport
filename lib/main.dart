@@ -167,9 +167,11 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
                                 var numbers = Iterable.generate(6, (_) {
                                   return random.nextInt(10);
                                 }).toList();
+                                BuildContext? cursedContext;
                                 showModalBottomSheet(
                                   context: context,
                                   builder: (BuildContext context) {
+                                    cursedContext = context;
                                     return SizedBox(
                                       height: 100,
                                       child: Center(
@@ -199,6 +201,7 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
                                   _peers = peers;
                                   _result = "Successfully paired to device";
                                 });
+                                Navigator.pop(cursedContext!);
                               }
                             },
                           );
@@ -241,70 +244,59 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
       }
     }
 
-    widget.state.pairingSubscription().forEach((event) async {
-      event.when(
-        inboundPair: (pair) {
-          showModalBottomSheet(
-            context: context,
-            builder: (BuildContext context) {
-              return SizedBox(
-                height: 200,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+    widget.state.pairingSubscription().forEach((pair) {
+      showModalBottomSheet(
+        context: context,
+        builder: (BuildContext context) {
+          return SizedBox(
+            height: 200,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text("Incoming Pairing Request"),
+                SizedBox(height: 10),
+                Text("Device: ${pair.friendlyName}"),
+                SizedBox(height: 10),
+                Text("Code: ${pair.pairingCode.join()}"),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    Text("Incoming Pairing Request"),
-                    SizedBox(height: 10),
-                    Text("Device: ${pair.friendlyName}"),
-                    SizedBox(height: 10),
-                    Text("Code: ${pair.pairingCode.join()}"),
-                    SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        FilledButton.tonal(
-                          onPressed: () async {
-                            Navigator.pop(context);
-                            await widget.state.reactToPairing(
-                              peer: pair.peer,
-                              reaction: UIPairReaction.accept(ourName: ""),
-                            );
-                          },
-                          child: Text("Accept"),
-                        ),
-                        FilledButton.tonal(
-                          onPressed: () async {
-                            Navigator.pop(context);
-                            await widget.state.reactToPairing(
-                              peer: pair.peer,
-                              reaction: UIPairReaction.reject(),
-                            );
-                          },
-                          child: Text("Reject"),
-                        ),
-                      ],
+                    FilledButton.tonal(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await pair.react(reaction: UIPairReaction.accept);
+                        pair
+                            .result()
+                            .onError((error, stackTrace) {
+                              setState(() {
+                                _result = "Pairing failed: ${error.toString()}";
+                              });
+                            })
+                            .then((_) async {
+                              var peers = await widget.state.peers();
+                              setState(() {
+                                _result = "Pairing succeeded!";
+                                _peers = peers;
+                              });
+                            });
+                      },
+                      child: Text("Accept"),
+                    ),
+                    FilledButton.tonal(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await pair.react(reaction: UIPairReaction.reject);
+                      },
+                      child: Text("Reject"),
                     ),
                   ],
                 ),
-              );
-            },
+              ],
+            ),
           );
         },
-        completedPair: (cp) {
-          setState(() {
-            _result = "Paired with ${cp.friendlyName} (${cp.peer})";
-          });
-        },
-        failedPair: (fp) {
-          setState(() {
-            _result = "Failed to pair with ${fp.friendlyName}: ${fp.reason}";
-          });
-        },
       );
-
-      var peers = await widget.state.peers();
-      setState(() {
-        _peers = peers;
-      });
     });
 
     widget.state.fileSubscription().forEach((file) async {

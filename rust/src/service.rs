@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::{Result, bail};
 use iroh::{
@@ -11,13 +11,11 @@ use iroh_blobs::{
     BlobsProtocol, api::downloader::Downloader, store::mem::MemStore, ticket::BlobTicket,
 };
 use kameo::prelude::*;
+use tokio::spawn;
 use tracing::{info, warn};
 
 use crate::{
-    api::teleport::{
-        CompletedPair, FailedPair, InboundFile, InboundPair, InboundPairingEvent, Resolver,
-        UIPairReaction,
-    },
+    api::teleport::{InboundFile, InboundPair, UIPairReaction, UIPromise, UIResolver},
     config::{ConfigManager, Peer},
     frb_generated::{RustAutoOpaque, StreamSink},
     promise::{Promise, init_promise},
@@ -29,18 +27,14 @@ use crate::{
 };
 
 pub struct Dispatcher {
+    this: ActorRef<Dispatcher>,
     manager: ConfigManager,
-    router: Router,
+    router: Arc<Router>,
     store: MemStore,
     temp_dir: PathBuf,
     downloader: Downloader,
-    inbound_pairings: InboundPairingState,
     file_subscription: Option<StreamSink<InboundFile>>,
-}
-
-pub struct InboundPairingState {
-    subscription: Option<StreamSink<InboundPairingEvent>>,
-    friendly_names: HashMap<EndpointId, String>,
+    pairing_subscription: Option<StreamSink<InboundPair>>,
 }
 
 pub struct DispatcherArgs {
@@ -83,22 +77,20 @@ impl Actor for Dispatcher {
             )
             .spawn();
 
+        let router = Arc::new(router);
+
         info!("EndpointID: {}", router.endpoint().id());
         info!("Router started");
 
-        let inbound_pairings = InboundPairingState {
-            subscription: None,
-            friendly_names: HashMap::new(),
-        };
-
         Ok(Self {
+            this: actor_ref,
             manager,
             router,
             store,
             temp_dir,
             downloader,
             file_subscription: None,
-            inbound_pairings,
+            pairing_subscription: None,
         })
     }
 }
@@ -113,7 +105,7 @@ impl Message<ActionRequest> for Dispatcher {
     ) -> Self::Reply {
         match msg {
             ActionRequest::PairWith { peer, pairing_code } => {
-                let result = self.pair_with(peer, pairing_code).await;
+                let result = self.pair_with(peer, pairing_code);
                 ActionResponse::PairWith(result)
             }
             ActionRequest::SendFile { to, name, path } => {
@@ -133,13 +125,18 @@ impl Message<BGRequest> for Dispatcher {
         _ctx: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         match msg {
-            BGRequest::IncomingPairStarted { from, name, code } => {
-                let reaction = self.incoming_pair_started(from, name, code).await;
+            BGRequest::IncomingPairStarted {
+                from,
+                name,
+                code,
+                outcome,
+            } => {
+                let reaction = self.incoming_pair_started(from, name, code, outcome).await;
                 let our_name = self.manager.name.clone();
                 BGResponse::IncomingPair { reaction, our_name }
             }
-            BGRequest::IncomingPairFinished { peer, outcome } => {
-                self.incoming_pair_finished(peer, outcome).await;
+            BGRequest::RegisterPeer(peer) => {
+                self.register_peer(peer).await;
                 BGResponse::Ack
             }
             BGRequest::IncomingOffer(offer) => {
@@ -162,7 +159,7 @@ impl Message<UIRequest> for Dispatcher {
     ) -> Self::Reply {
         match msg {
             UIRequest::PairingSubscription(sub) => {
-                self.inbound_pairings.subscription = Some(sub);
+                self.pairing_subscription = Some(sub);
                 UIResponse::Ack
             }
             UIRequest::FileSubscription(sub) => {
@@ -220,58 +217,33 @@ impl Dispatcher {
         from: EndpointId,
         friendly_name: String,
         pairing_code: [u8; 6],
+        outcome: Promise<Result<(), String>>,
     ) -> Promise<UIPairReaction> {
-        let (promise, resolver) = init_promise();
+        let (reaction_promise, reaction_resolver) = init_promise();
 
-        if let Some(ref ui) = self.inbound_pairings.subscription {
+        if let Some(ref ui) = self.pairing_subscription {
             if self.manager.peers.iter().any(|p| p.id == from) {
                 warn!("Already paired to {from}, ignoring");
-                resolver.emit(UIPairReaction::Reject);
-                return promise;
+                reaction_resolver.emit(UIPairReaction::Reject);
+                return reaction_promise;
             }
 
             let pair = InboundPair {
                 peer: from.to_string(),
                 friendly_name: friendly_name.clone(),
                 pairing_code,
-                reactor: RustAutoOpaque::new(Resolver::new(resolver)),
+                reaction: RustAutoOpaque::new(UIResolver::new(reaction_resolver)),
+                outcome: RustAutoOpaque::new(UIPromise::new(outcome)),
             };
 
-            ui.add(InboundPairingEvent::InboundPair(pair)).unwrap();
-
-            self.inbound_pairings
-                .friendly_names
-                .insert(from, friendly_name);
+            ui.add(pair).unwrap();
         }
-        promise
+        reaction_promise
     }
 
-    pub async fn incoming_pair_finished(&mut self, peer: EndpointId, outcome: Result<()>) {
-        let ui = self.inbound_pairings.subscription.as_ref().unwrap();
-        let name = self.inbound_pairings.friendly_names.remove(&peer).unwrap();
-        match outcome {
-            Ok(_) => {
-                self.manager.peers.push(Peer {
-                    name: name.clone(),
-                    id: peer,
-                });
-                self.manager.save().await.unwrap();
-
-                ui.add(InboundPairingEvent::CompletedPair(CompletedPair {
-                    peer: peer.to_string(),
-                    friendly_name: name,
-                }))
-                .unwrap();
-            }
-            Err(error) => {
-                ui.add(InboundPairingEvent::FailedPair(FailedPair {
-                    peer: peer.to_string(),
-                    friendly_name: name,
-                    reason: error.to_string(),
-                }))
-                .unwrap();
-            }
-        }
+    pub async fn register_peer(&mut self, peer: Peer) {
+        self.manager.peers.push(peer);
+        self.manager.save().await.unwrap();
     }
 
     pub async fn incoming_offer(
@@ -297,45 +269,76 @@ impl Dispatcher {
         Ok(())
     }
 
-    pub async fn pair_with(&mut self, addr: EndpointAddr, code: [u8; 6]) -> Result<()> {
+    pub fn pair_with(&self, addr: EndpointAddr, code: [u8; 6]) -> Promise<Result<()>> {
         let id = addr.id;
+        let name = self.manager.name.clone();
+        let router = self.router.clone();
+        let dispatcher = self.this.clone();
+        let already_paired = self.manager.peers.iter().any(|p| p.id == addr.id);
 
-        if self.manager.peers.iter().any(|p| p.id == id) {
-            warn!("Already paired to {id}, ignoring");
-            return Ok(());
-        }
+        let (promise, resolver) = init_promise();
 
-        let conn = self.router.endpoint().connect(addr, pair::ALPN).await?;
-        let (send, recv) = conn.open_bi().await?;
-        let mut framed = FramedBiStream::new((send, recv), MAX_SIZE);
-
-        Pair::Helo {
-            friendly_name: self.manager.name.clone(),
-            pairing_code: code,
-        }
-        .send(&mut framed)
-        .await?;
-
-        let response = Pair::recv(&mut framed).await?;
-
-        let name = match response {
-            Pair::FuckOff => {
-                bail!("Peer rejected pairing");
+        spawn(async move {
+            if already_paired {
+                warn!("Already paired to {id}, ignoring");
+                resolver.emit(Ok(()));
+                return;
             }
-            Pair::NiceToMeetYou { friendly_name } => friendly_name,
-            Pair::WrongPairingCode => {
-                bail!("Wrong pairing code");
-            }
-            _ => bail!("Invalid msg type"),
-        };
 
-        self.manager.peers.push(Peer {
-            name: name.clone(),
-            id,
+            info!("Pairing with {id}...");
+
+            let action = async {
+                let conn = router.endpoint().connect(addr, pair::ALPN).await?;
+                let (send, recv) = conn.open_bi().await?;
+                let mut framed = FramedBiStream::new((send, recv), MAX_SIZE);
+
+                Pair::Helo {
+                    friendly_name: name,
+                    pairing_code: code,
+                }
+                .send(&mut framed)
+                .await?;
+
+                info!("Sent HELO to {id}...");
+
+                let response = Pair::recv(&mut framed).await?;
+
+                info!("Got {response:?} from {id}");
+
+                let name = match response {
+                    Pair::FuckOff => {
+                        bail!("Peer rejected pairing");
+                    }
+                    Pair::NiceToMeetYou { friendly_name } => friendly_name,
+                    Pair::WrongPairingCode => {
+                        bail!("Wrong pairing code");
+                    }
+                    _ => bail!("Invalid msg type"),
+                };
+
+                Ok(name)
+            };
+
+            match action.await {
+                Ok(peer_name) => {
+                    info!("Paired with {peer_name} ({id})");
+                    dispatcher
+                        .tell(BGRequest::RegisterPeer(Peer {
+                            id,
+                            name: peer_name,
+                        }))
+                        .await
+                        .unwrap();
+                    resolver.emit(Ok(()));
+                }
+                Err(e) => {
+                    warn!("Failed to pair with {id}: {}", e);
+                    resolver.emit(Err(e));
+                }
+            }
         });
-        self.manager.save().await?;
 
-        Ok(())
+        promise
     }
 }
 pub enum ActionRequest {
@@ -355,16 +358,14 @@ pub enum BGRequest {
         from: EndpointId,
         name: String,
         code: [u8; 6],
+        outcome: Promise<Result<(), String>>,
     },
-    IncomingPairFinished {
-        peer: EndpointId,
-        outcome: Result<()>,
-    },
+    RegisterPeer(Peer),
     IncomingOffer(Offer),
 }
 
 pub enum UIRequest {
-    PairingSubscription(StreamSink<InboundPairingEvent>),
+    PairingSubscription(StreamSink<InboundPair>),
     FileSubscription(StreamSink<InboundFile>),
     GetTargetDir,
     SetTargetDir(PathBuf),
@@ -391,7 +392,7 @@ pub enum BGResponse {
 
 #[derive(Reply)]
 pub enum ActionResponse {
-    PairWith(Result<()>),
+    PairWith(Promise<Result<()>>),
     SendFile(Result<()>),
     Ack,
 }

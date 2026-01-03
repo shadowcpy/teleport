@@ -24,15 +24,25 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
       ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppStatePtr;
 
   CrossPlatformFinalizerArg
-  get rust_arc_decrement_strong_count_PromiseReactorUiPairReactionPtr => wire
-      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReactionPtr;
+  get rust_arc_decrement_strong_count_UiPromiseResultStringPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultStringPtr;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_UiResolverUiPairReactionPtr => wire
+      ._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReactionPtr;
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
 
   @protected
-  PromiseReactorUiPairReaction
-  dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    dynamic raw,
+  );
+
+  @protected
+  UiResolverUiPairReaction
+  dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
     dynamic raw,
   );
 
@@ -55,8 +65,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  PromiseReactorUiPairReaction
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    dynamic raw,
+  );
+
+  @protected
+  UiResolverUiPairReaction
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
     dynamic raw,
   );
 
@@ -66,26 +82,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<InboundPairingEvent>
-  dco_decode_StreamSink_inbound_pairing_event_Sse(dynamic raw);
+  RustStreamSink<InboundPair> dco_decode_StreamSink_inbound_pair_Sse(
+    dynamic raw,
+  );
 
   @protected
   String dco_decode_String(dynamic raw);
 
   @protected
-  CompletedPair dco_decode_box_autoadd_completed_pair(dynamic raw);
-
-  @protected
-  FailedPair dco_decode_box_autoadd_failed_pair(dynamic raw);
-
-  @protected
   InboundPair dco_decode_box_autoadd_inbound_pair(dynamic raw);
-
-  @protected
-  CompletedPair dco_decode_completed_pair(dynamic raw);
-
-  @protected
-  FailedPair dco_decode_failed_pair(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -95,9 +100,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   InboundPair dco_decode_inbound_pair(dynamic raw);
-
-  @protected
-  InboundPairingEvent dco_decode_inbound_pairing_event(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
@@ -133,8 +135,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
   @protected
-  PromiseReactorUiPairReaction
-  sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  UiResolverUiPairReaction
+  sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
     SseDeserializer deserializer,
   );
 
@@ -157,8 +165,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  PromiseReactorUiPairReaction
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  UiResolverUiPairReaction
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
     SseDeserializer deserializer,
   );
 
@@ -168,28 +182,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<InboundPairingEvent>
-  sse_decode_StreamSink_inbound_pairing_event_Sse(SseDeserializer deserializer);
+  RustStreamSink<InboundPair> sse_decode_StreamSink_inbound_pair_Sse(
+    SseDeserializer deserializer,
+  );
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
-  CompletedPair sse_decode_box_autoadd_completed_pair(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  FailedPair sse_decode_box_autoadd_failed_pair(SseDeserializer deserializer);
-
-  @protected
   InboundPair sse_decode_box_autoadd_inbound_pair(SseDeserializer deserializer);
-
-  @protected
-  CompletedPair sse_decode_completed_pair(SseDeserializer deserializer);
-
-  @protected
-  FailedPair sse_decode_failed_pair(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -199,11 +200,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   InboundPair sse_decode_inbound_pair(SseDeserializer deserializer);
-
-  @protected
-  InboundPairingEvent sse_decode_inbound_pairing_event(
-    SseDeserializer deserializer,
-  );
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
@@ -250,8 +246,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-  sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
-    PromiseReactorUiPairReaction self,
+  sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    UiPromiseResultString self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    UiResolverUiPairReaction self,
     SseSerializer serializer,
   );
 
@@ -278,8 +281,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
-    PromiseReactorUiPairReaction self,
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    UiPromiseResultString self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    UiResolverUiPairReaction self,
     SseSerializer serializer,
   );
 
@@ -290,8 +300,8 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_StreamSink_inbound_pairing_event_Sse(
-    RustStreamSink<InboundPairingEvent> self,
+  void sse_encode_StreamSink_inbound_pair_Sse(
+    RustStreamSink<InboundPair> self,
     SseSerializer serializer,
   );
 
@@ -299,28 +309,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
-  void sse_encode_box_autoadd_completed_pair(
-    CompletedPair self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_box_autoadd_failed_pair(
-    FailedPair self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_box_autoadd_inbound_pair(
     InboundPair self,
     SseSerializer serializer,
   );
-
-  @protected
-  void sse_encode_completed_pair(CompletedPair self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_failed_pair(FailedPair self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -330,12 +322,6 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_inbound_pair(InboundPair self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_inbound_pairing_event(
-    InboundPairingEvent self,
-    SseSerializer serializer,
-  );
 
   @protected
   void sse_encode_list_prim_u_8_strict(
@@ -432,36 +418,70 @@ class RustLibWire implements BaseWire {
           .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
   void
-  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
     ffi.Pointer<ffi.Void> ptr,
   ) {
-    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
       ptr,
     );
   }
 
-  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReactionPtr =
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultStringPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
-        'frbgen_teleport_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction',
+        'frbgen_teleport_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString',
       );
-  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction =
-      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReactionPtr
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultStringPtr
           .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 
   void
-  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
     ffi.Pointer<ffi.Void> ptr,
   ) {
-    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
       ptr,
     );
   }
 
-  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReactionPtr =
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultStringPtr =
       _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
-        'frbgen_teleport_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction',
+        'frbgen_teleport_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString',
       );
-  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction =
-      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReactionPtr
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultStringPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReactionPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_teleport_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction',
+      );
+  late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction =
+      _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReactionPtr
+          .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    ffi.Pointer<ffi.Void> ptr,
+  ) {
+    return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+      ptr,
+    );
+  }
+
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReactionPtr =
+      _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>(
+        'frbgen_teleport_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction',
+      );
+  late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction =
+      _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReactionPtr
           .asFunction<void Function(ffi.Pointer<ffi.Void>)>();
 }

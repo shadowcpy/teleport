@@ -8,9 +8,12 @@ use kameo::actor::ActorRef;
 use serde::{Deserialize, Serialize};
 use tokio::spawn;
 use tokio_util::bytes::BytesMut;
+use tracing::info;
 
 use crate::{
     api::teleport::UIPairReaction,
+    config::Peer,
+    promise::init_promise,
     protocol::framed::FramedBiStream,
     service::{BGRequest, BGResponse, Dispatcher},
 };
@@ -59,6 +62,8 @@ impl ProtocolHandler for PairAcceptor {
         let mut framed = FramedBiStream::new((send, recv), MAX_SIZE);
         let dispatcher = self.dispatcher.clone();
 
+        info!("New pairing request from {}", connection.remote_id());
+
         spawn(async move {
             let Ok(helo) = Pair::recv(&mut framed).await else {
                 connection.close(1u32.into(), b"INV_HELO");
@@ -74,11 +79,16 @@ impl ProtocolHandler for PairAcceptor {
                 return;
             };
 
+            info!("Got HELO from {}", connection.remote_id());
+
+            let (promise, resolver) = init_promise();
+
             let response = dispatcher
                 .ask(BGRequest::IncomingPairStarted {
                     from: connection.remote_id(),
                     name: peer_name.clone(),
                     code: pairing_code,
+                    outcome: promise,
                 })
                 .await
                 .unwrap();
@@ -89,6 +99,8 @@ impl ProtocolHandler for PairAcceptor {
 
             let reaction = reaction.await;
 
+            info!("Responding with {reaction:?} to {}", connection.remote_id());
+
             match reaction {
                 UIPairReaction::Accept => {
                     let result = Pair::NiceToMeetYou {
@@ -97,13 +109,17 @@ impl ProtocolHandler for PairAcceptor {
                     .send(&mut framed)
                     .await;
 
-                    dispatcher
-                        .tell(BGRequest::IncomingPairFinished {
-                            peer: connection.remote_id(),
-                            outcome: result,
-                        })
-                        .await
-                        .unwrap();
+                    if result.is_ok() {
+                        dispatcher
+                            .tell(BGRequest::RegisterPeer(Peer {
+                                id: connection.remote_id(),
+                                name: peer_name,
+                            }))
+                            .await
+                            .unwrap();
+                    }
+
+                    resolver.emit(result.map_err(|e| e.to_string()));
                 }
                 UIPairReaction::WrongPairingCode => {
                     Pair::WrongPairingCode.send(&mut framed).await.ok();

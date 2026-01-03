@@ -6,11 +6,9 @@
 import '../frb_generated.dart';
 import '../lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
-part 'teleport.freezed.dart';
 
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
-// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `new`, `react`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `new`, `new`, `resolve`, `result`
 
 Future<void> initLogging() =>
     RustLib.instance.api.crateApiTeleportInitLogging();
@@ -33,7 +31,7 @@ abstract class AppState implements RustOpaqueInterface {
 
   Future<void> pairWith({required String info, required U8Array6 pairingCode});
 
-  Stream<InboundPairingEvent> pairingSubscription();
+  Stream<InboundPair> pairingSubscription();
 
   Future<List<(String, String)>> peers();
 
@@ -44,48 +42,6 @@ abstract class AppState implements RustOpaqueInterface {
   });
 
   Future<void> setTargetDir({required String dir});
-}
-
-class CompletedPair {
-  final String peer;
-  final String friendlyName;
-
-  const CompletedPair({required this.peer, required this.friendlyName});
-
-  @override
-  int get hashCode => peer.hashCode ^ friendlyName.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CompletedPair &&
-          runtimeType == other.runtimeType &&
-          peer == other.peer &&
-          friendlyName == other.friendlyName;
-}
-
-class FailedPair {
-  final String peer;
-  final String friendlyName;
-  final String reason;
-
-  const FailedPair({
-    required this.peer,
-    required this.friendlyName,
-    required this.reason,
-  });
-
-  @override
-  int get hashCode => peer.hashCode ^ friendlyName.hashCode ^ reason.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is FailedPair &&
-          runtimeType == other.runtimeType &&
-          peer == other.peer &&
-          friendlyName == other.friendlyName &&
-          reason == other.reason;
 }
 
 class InboundFile {
@@ -120,24 +76,30 @@ class InboundPair {
   final String peer;
   final String friendlyName;
   final U8Array6 pairingCode;
-  final PromiseReactorUiPairReaction reactor;
+  final UiResolverUiPairReaction reaction;
+  final UiPromiseResultString outcome;
 
   const InboundPair({
     required this.peer,
     required this.friendlyName,
     required this.pairingCode,
-    required this.reactor,
+    required this.reaction,
+    required this.outcome,
   });
 
-  Future<void> react({required UIPairReaction value}) => RustLib.instance.api
-      .crateApiTeleportInboundPairReact(that: this, value: value);
+  Future<void> react({required UIPairReaction reaction}) => RustLib.instance.api
+      .crateApiTeleportInboundPairReact(that: this, reaction: reaction);
+
+  Future<void> result() =>
+      RustLib.instance.api.crateApiTeleportInboundPairResult(that: this);
 
   @override
   int get hashCode =>
       peer.hashCode ^
       friendlyName.hashCode ^
       pairingCode.hashCode ^
-      reactor.hashCode;
+      reaction.hashCode ^
+      outcome.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -147,19 +109,8 @@ class InboundPair {
           peer == other.peer &&
           friendlyName == other.friendlyName &&
           pairingCode == other.pairingCode &&
-          reactor == other.reactor;
-}
-
-@freezed
-sealed class InboundPairingEvent with _$InboundPairingEvent {
-  const InboundPairingEvent._();
-
-  const factory InboundPairingEvent.inboundPair(InboundPair field0) =
-      InboundPairingEvent_InboundPair;
-  const factory InboundPairingEvent.completedPair(CompletedPair field0) =
-      InboundPairingEvent_CompletedPair;
-  const factory InboundPairingEvent.failedPair(FailedPair field0) =
-      InboundPairingEvent_FailedPair;
+          reaction == other.reaction &&
+          outcome == other.outcome;
 }
 
 enum UIPairReaction { accept, reject, wrongPairingCode }

@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -298205073;
+  int get rustContentHash => 937523829;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -99,7 +99,7 @@ abstract class RustLibApi extends BaseApi {
     required U8Array6 pairingCode,
   });
 
-  Stream<InboundPairingEvent> crateApiTeleportAppStatePairingSubscription({
+  Stream<InboundPair> crateApiTeleportAppStatePairingSubscription({
     required AppState that,
   });
 
@@ -121,8 +121,10 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiTeleportInboundPairReact({
     required InboundPair that,
-    required UIPairReaction value,
+    required UIPairReaction reaction,
   });
+
+  Future<void> crateApiTeleportInboundPairResult({required InboundPair that});
 
   Future<void> crateApiTeleportInitApp();
 
@@ -137,13 +139,22 @@ abstract class RustLibApi extends BaseApi {
   CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_AppStatePtr;
 
   RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_PromiseReactorUiPairReaction;
+  get rust_arc_increment_strong_count_UiPromiseResultString;
 
   RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_PromiseReactorUiPairReaction;
+  get rust_arc_decrement_strong_count_UiPromiseResultString;
 
   CrossPlatformFinalizerArg
-  get rust_arc_decrement_strong_count_PromiseReactorUiPairReactionPtr;
+  get rust_arc_decrement_strong_count_UiPromiseResultStringPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_UiResolverUiPairReaction;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_UiResolverUiPairReaction;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_UiResolverUiPairReactionPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -339,10 +350,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Stream<InboundPairingEvent> crateApiTeleportAppStatePairingSubscription({
+  Stream<InboundPair> crateApiTeleportAppStatePairingSubscription({
     required AppState that,
   }) {
-    final stream = RustStreamSink<InboundPairingEvent>();
+    final stream = RustStreamSink<InboundPair>();
     unawaited(
       handler.executeNormal(
         NormalTask(
@@ -352,7 +363,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
               that,
               serializer,
             );
-            sse_encode_StreamSink_inbound_pairing_event_Sse(stream, serializer);
+            sse_encode_StreamSink_inbound_pair_Sse(stream, serializer);
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
@@ -495,14 +506,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   Future<void> crateApiTeleportInboundPairReact({
     required InboundPair that,
-    required UIPairReaction value,
+    required UIPairReaction reaction,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_box_autoadd_inbound_pair(that, serializer);
-          sse_encode_ui_pair_reaction(value, serializer);
+          sse_encode_ui_pair_reaction(reaction, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -515,7 +526,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: null,
         ),
         constMeta: kCrateApiTeleportInboundPairReactConstMeta,
-        argValues: [that, value],
+        argValues: [that, reaction],
         apiImpl: this,
       ),
     );
@@ -524,8 +535,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiTeleportInboundPairReactConstMeta =>
       const TaskConstMeta(
         debugName: "inbound_pair_react",
-        argNames: ["that", "value"],
+        argNames: ["that", "reaction"],
       );
+
+  @override
+  Future<void> crateApiTeleportInboundPairResult({required InboundPair that}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_box_autoadd_inbound_pair(that, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiTeleportInboundPairResultConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTeleportInboundPairResultConstMeta =>
+      const TaskConstMeta(debugName: "inbound_pair_result", argNames: ["that"]);
 
   @override
   Future<void> crateApiTeleportInitApp() {
@@ -536,7 +575,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 12,
             port: port_,
           );
         },
@@ -563,7 +602,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 13,
             port: port_,
           );
         },
@@ -590,12 +629,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState;
 
   RustArcIncrementStrongCountFnType
-  get rust_arc_increment_strong_count_PromiseReactorUiPairReaction => wire
-      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction;
+  get rust_arc_increment_strong_count_UiPromiseResultString => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString;
 
   RustArcDecrementStrongCountFnType
-  get rust_arc_decrement_strong_count_PromiseReactorUiPairReaction => wire
-      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction;
+  get rust_arc_decrement_strong_count_UiPromiseResultString => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_UiResolverUiPairReaction => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_UiResolverUiPairReaction => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction;
 
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw) {
@@ -604,12 +651,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PromiseReactorUiPairReaction
-  dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    return dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+      raw,
+    );
+  }
+
+  @protected
+  UiResolverUiPairReaction
+  dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
       raw,
     );
   }
@@ -642,12 +700,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PromiseReactorUiPairReaction
-  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return PromiseReactorUiPairReactionImpl.frbInternalDcoDecode(
+    return UiPromiseResultStringImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  UiResolverUiPairReaction
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return UiResolverUiPairReactionImpl.frbInternalDcoDecode(
       raw as List<dynamic>,
     );
   }
@@ -661,8 +728,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<InboundPairingEvent>
-  dco_decode_StreamSink_inbound_pairing_event_Sse(dynamic raw) {
+  RustStreamSink<InboundPair> dco_decode_StreamSink_inbound_pair_Sse(
+    dynamic raw,
+  ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     throw UnimplementedError();
   }
@@ -674,46 +742,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  CompletedPair dco_decode_box_autoadd_completed_pair(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_completed_pair(raw);
-  }
-
-  @protected
-  FailedPair dco_decode_box_autoadd_failed_pair(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_failed_pair(raw);
-  }
-
-  @protected
   InboundPair dco_decode_box_autoadd_inbound_pair(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_inbound_pair(raw);
-  }
-
-  @protected
-  CompletedPair dco_decode_completed_pair(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return CompletedPair(
-      peer: dco_decode_String(arr[0]),
-      friendlyName: dco_decode_String(arr[1]),
-    );
-  }
-
-  @protected
-  FailedPair dco_decode_failed_pair(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return FailedPair(
-      peer: dco_decode_String(arr[0]),
-      friendlyName: dco_decode_String(arr[1]),
-      reason: dco_decode_String(arr[2]),
-    );
   }
 
   @protected
@@ -740,38 +771,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   InboundPair dco_decode_inbound_pair(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
     return InboundPair(
       peer: dco_decode_String(arr[0]),
       friendlyName: dco_decode_String(arr[1]),
       pairingCode: dco_decode_u_8_array_6(arr[2]),
-      reactor:
-          dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+      reaction:
+          dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
             arr[3],
           ),
+      outcome:
+          dco_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+            arr[4],
+          ),
     );
-  }
-
-  @protected
-  InboundPairingEvent dco_decode_inbound_pairing_event(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    switch (raw[0]) {
-      case 0:
-        return InboundPairingEvent_InboundPair(
-          dco_decode_box_autoadd_inbound_pair(raw[1]),
-        );
-      case 1:
-        return InboundPairingEvent_CompletedPair(
-          dco_decode_box_autoadd_completed_pair(raw[1]),
-        );
-      case 2:
-        return InboundPairingEvent_FailedPair(
-          dco_decode_box_autoadd_failed_pair(raw[1]),
-        );
-      default:
-        throw Exception("unreachable");
-    }
   }
 
   @protected
@@ -846,13 +860,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PromiseReactorUiPairReaction
-  sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner =
-        sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+        sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+          deserializer,
+        );
+    return inner;
+  }
+
+  @protected
+  UiResolverUiPairReaction
+  sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner =
+        sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
           deserializer,
         );
     return inner;
@@ -895,12 +922,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  PromiseReactorUiPairReaction
-  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+  UiPromiseResultString
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return PromiseReactorUiPairReactionImpl.frbInternalSseDecode(
+    return UiPromiseResultStringImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  UiResolverUiPairReaction
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return UiResolverUiPairReactionImpl.frbInternalSseDecode(
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
@@ -915,8 +954,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<InboundPairingEvent>
-  sse_decode_StreamSink_inbound_pairing_event_Sse(
+  RustStreamSink<InboundPair> sse_decode_StreamSink_inbound_pair_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -931,46 +969,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  CompletedPair sse_decode_box_autoadd_completed_pair(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_completed_pair(deserializer));
-  }
-
-  @protected
-  FailedPair sse_decode_box_autoadd_failed_pair(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_failed_pair(deserializer));
-  }
-
-  @protected
   InboundPair sse_decode_box_autoadd_inbound_pair(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_inbound_pair(deserializer));
-  }
-
-  @protected
-  CompletedPair sse_decode_completed_pair(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_peer = sse_decode_String(deserializer);
-    var var_friendlyName = sse_decode_String(deserializer);
-    return CompletedPair(peer: var_peer, friendlyName: var_friendlyName);
-  }
-
-  @protected
-  FailedPair sse_decode_failed_pair(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_peer = sse_decode_String(deserializer);
-    var var_friendlyName = sse_decode_String(deserializer);
-    var var_reason = sse_decode_String(deserializer);
-    return FailedPair(
-      peer: var_peer,
-      friendlyName: var_friendlyName,
-      reason: var_reason,
-    );
   }
 
   @protected
@@ -1000,38 +1003,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_peer = sse_decode_String(deserializer);
     var var_friendlyName = sse_decode_String(deserializer);
     var var_pairingCode = sse_decode_u_8_array_6(deserializer);
-    var var_reactor =
-        sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    var var_reaction =
+        sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+          deserializer,
+        );
+    var var_outcome =
+        sse_decode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
           deserializer,
         );
     return InboundPair(
       peer: var_peer,
       friendlyName: var_friendlyName,
       pairingCode: var_pairingCode,
-      reactor: var_reactor,
+      reaction: var_reaction,
+      outcome: var_outcome,
     );
-  }
-
-  @protected
-  InboundPairingEvent sse_decode_inbound_pairing_event(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var tag_ = sse_decode_i_32(deserializer);
-    switch (tag_) {
-      case 0:
-        var var_field0 = sse_decode_box_autoadd_inbound_pair(deserializer);
-        return InboundPairingEvent_InboundPair(var_field0);
-      case 1:
-        var var_field0 = sse_decode_box_autoadd_completed_pair(deserializer);
-        return InboundPairingEvent_CompletedPair(var_field0);
-      case 2:
-        var var_field0 = sse_decode_box_autoadd_failed_pair(deserializer);
-        return InboundPairingEvent_FailedPair(var_field0);
-      default:
-        throw UnimplementedError('');
-    }
   }
 
   @protected
@@ -1130,12 +1116,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-  sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
-    PromiseReactorUiPairReaction self,
+  sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    UiPromiseResultString self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
+    sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+      self,
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    UiResolverUiPairReaction self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
       self,
       serializer,
     );
@@ -1182,15 +1181,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
-  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
-    PromiseReactorUiPairReaction self,
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+    UiPromiseResultString self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
-      (self as PromiseReactorUiPairReactionImpl).frbInternalSseEncode(
-        move: null,
-      ),
+      (self as UiPromiseResultStringImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+    UiResolverUiPairReaction self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as UiResolverUiPairReactionImpl).frbInternalSseEncode(move: null),
       serializer,
     );
   }
@@ -1213,15 +1223,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_StreamSink_inbound_pairing_event_Sse(
-    RustStreamSink<InboundPairingEvent> self,
+  void sse_encode_StreamSink_inbound_pair_Sse(
+    RustStreamSink<InboundPair> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(
       self.setupAndSerialize(
         codec: SseCodec(
-          decodeSuccessData: sse_decode_inbound_pairing_event,
+          decodeSuccessData: sse_decode_inbound_pair,
           decodeErrorData: sse_decode_AnyhowException,
         ),
       ),
@@ -1236,45 +1246,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_box_autoadd_completed_pair(
-    CompletedPair self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_completed_pair(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_failed_pair(
-    FailedPair self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_failed_pair(self, serializer);
-  }
-
-  @protected
   void sse_encode_box_autoadd_inbound_pair(
     InboundPair self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_inbound_pair(self, serializer);
-  }
-
-  @protected
-  void sse_encode_completed_pair(CompletedPair self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.peer, serializer);
-    sse_encode_String(self.friendlyName, serializer);
-  }
-
-  @protected
-  void sse_encode_failed_pair(FailedPair self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.peer, serializer);
-    sse_encode_String(self.friendlyName, serializer);
-    sse_encode_String(self.reason, serializer);
   }
 
   @protected
@@ -1298,29 +1275,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.peer, serializer);
     sse_encode_String(self.friendlyName, serializer);
     sse_encode_u_8_array_6(self.pairingCode, serializer);
-    sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPromiseReactorUIPairReaction(
-      self.reactor,
+    sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIResolverUIPairReaction(
+      self.reaction,
       serializer,
     );
-  }
-
-  @protected
-  void sse_encode_inbound_pairing_event(
-    InboundPairingEvent self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    switch (self) {
-      case InboundPairingEvent_InboundPair(field0: final field0):
-        sse_encode_i_32(0, serializer);
-        sse_encode_box_autoadd_inbound_pair(field0, serializer);
-      case InboundPairingEvent_CompletedPair(field0: final field0):
-        sse_encode_i_32(1, serializer);
-        sse_encode_box_autoadd_completed_pair(field0, serializer);
-      case InboundPairingEvent_FailedPair(field0: final field0):
-        sse_encode_i_32(2, serializer);
-        sse_encode_box_autoadd_failed_pair(field0, serializer);
-    }
+    sse_encode_AutoExplicit_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerUIPromiseResultString(
+      self.outcome,
+      serializer,
+    );
   }
 
   @protected
@@ -1447,7 +1409,7 @@ class AppStateImpl extends RustOpaque implements AppState {
     pairingCode: pairingCode,
   );
 
-  Stream<InboundPairingEvent> pairingSubscription() => RustLib.instance.api
+  Stream<InboundPair> pairingSubscription() => RustLib.instance.api
       .crateApiTeleportAppStatePairingSubscription(that: this);
 
   Future<List<(String, String)>> peers() =>
@@ -1469,14 +1431,14 @@ class AppStateImpl extends RustOpaque implements AppState {
 }
 
 @sealed
-class PromiseReactorUiPairReactionImpl extends RustOpaque
-    implements PromiseReactorUiPairReaction {
+class UiPromiseResultStringImpl extends RustOpaque
+    implements UiPromiseResultString {
   // Not to be used by end users
-  PromiseReactorUiPairReactionImpl.frbInternalDcoDecode(List<dynamic> wire)
+  UiPromiseResultStringImpl.frbInternalDcoDecode(List<dynamic> wire)
     : super.frbInternalDcoDecode(wire, _kStaticData);
 
   // Not to be used by end users
-  PromiseReactorUiPairReactionImpl.frbInternalSseDecode(
+  UiPromiseResultStringImpl.frbInternalSseDecode(
     BigInt ptr,
     int externalSizeOnNative,
   ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
@@ -1485,14 +1447,43 @@ class PromiseReactorUiPairReactionImpl extends RustOpaque
     rustArcIncrementStrongCount: RustLib
         .instance
         .api
-        .rust_arc_increment_strong_count_PromiseReactorUiPairReaction,
+        .rust_arc_increment_strong_count_UiPromiseResultString,
     rustArcDecrementStrongCount: RustLib
         .instance
         .api
-        .rust_arc_decrement_strong_count_PromiseReactorUiPairReaction,
+        .rust_arc_decrement_strong_count_UiPromiseResultString,
     rustArcDecrementStrongCountPtr: RustLib
         .instance
         .api
-        .rust_arc_decrement_strong_count_PromiseReactorUiPairReactionPtr,
+        .rust_arc_decrement_strong_count_UiPromiseResultStringPtr,
+  );
+}
+
+@sealed
+class UiResolverUiPairReactionImpl extends RustOpaque
+    implements UiResolverUiPairReaction {
+  // Not to be used by end users
+  UiResolverUiPairReactionImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  UiResolverUiPairReactionImpl.frbInternalSseDecode(
+    BigInt ptr,
+    int externalSizeOnNative,
+  ) : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_increment_strong_count_UiResolverUiPairReaction,
+    rustArcDecrementStrongCount: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_UiResolverUiPairReaction,
+    rustArcDecrementStrongCountPtr: RustLib
+        .instance
+        .api
+        .rust_arc_decrement_strong_count_UiResolverUiPairReactionPtr,
   );
 }

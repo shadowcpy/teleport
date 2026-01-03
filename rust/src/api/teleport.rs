@@ -9,7 +9,7 @@ use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::Subscriber
 use crate::{
     config::ConfigManager,
     frb_generated::{RustAutoOpaque, StreamSink},
-    promise::PromiseResolver,
+    promise::{self, Promise, PromiseResolver},
     service::{ActionRequest, ActionResponse, Dispatcher, DispatcherArgs, UIRequest, UIResponse},
 };
 
@@ -53,10 +53,14 @@ impl AppState {
 
     pub async fn pair_with(&self, info: String, pairing_code: [u8; 6]) -> anyhow::Result<()> {
         let peer: EndpointAddr = serde_json::from_str(&info)?;
-        self.dispatcher
-            .tell(ActionRequest::PairWith { peer, pairing_code })
+        let response = self
+            .dispatcher
+            .ask(ActionRequest::PairWith { peer, pairing_code })
             .await?;
-        Ok(())
+        let ActionResponse::PairWith(result) = response else {
+            unreachable!()
+        };
+        result.await
     }
 
     pub async fn send_file(&self, peer: String, name: String, path: String) -> anyhow::Result<()> {
@@ -88,7 +92,7 @@ impl AppState {
 
     pub async fn pairing_subscription(
         &self,
-        stream: StreamSink<InboundPairingEvent>,
+        stream: StreamSink<InboundPair>,
     ) -> anyhow::Result<()> {
         self.dispatcher
             .tell(UIRequest::PairingSubscription(stream))
@@ -113,49 +117,45 @@ pub struct InboundFile {
 }
 
 #[frb]
-pub enum InboundPairingEvent {
-    InboundPair(InboundPair),
-    CompletedPair(CompletedPair),
-    FailedPair(FailedPair),
-}
-
-#[frb]
 pub struct InboundPair {
     pub peer: String,
     pub friendly_name: String,
     pub pairing_code: [u8; 6],
-    pub reactor: RustAutoOpaque<Resolver<UIPairReaction>>,
+    pub reaction: RustAutoOpaque<UIResolver<UIPairReaction>>,
+    pub outcome: RustAutoOpaque<UIPromise<Result<(), String>>>,
 }
 
 impl InboundPair {
-    pub async fn react(&self, value: UIPairReaction) {
-        self.reactor.write().await.resolve(value);
+    pub async fn react(&self, reaction: UIPairReaction) {
+        self.reaction.write().await.resolve(reaction);
+    }
+    pub async fn result(&self) -> Result<(), String> {
+        self.outcome.write().await.result().await
     }
 }
 
 #[frb(opaque)]
-pub struct Resolver<T>(Option<PromiseResolver<T>>);
+pub struct UIPromise<T>(Option<Promise<T>>);
 
-impl<T: Debug> Resolver<T> {
+impl<T: Debug> UIPromise<T> {
+    pub fn new(promise: promise::Promise<T>) -> Self {
+        Self(Some(promise))
+    }
+    pub async fn result(&mut self) -> T {
+        self.0.take().unwrap().await
+    }
+}
+
+#[frb(opaque)]
+pub struct UIResolver<T>(Option<PromiseResolver<T>>);
+
+impl<T: Debug> UIResolver<T> {
     pub fn new(sender: PromiseResolver<T>) -> Self {
         Self(Some(sender))
     }
     pub fn resolve(&mut self, value: T) {
         self.0.take().unwrap().emit(value);
     }
-}
-
-#[frb]
-pub struct CompletedPair {
-    pub peer: String,
-    pub friendly_name: String,
-}
-
-#[frb]
-pub struct FailedPair {
-    pub peer: String,
-    pub friendly_name: String,
-    pub reason: String,
 }
 
 #[frb]
