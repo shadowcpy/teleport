@@ -10,6 +10,7 @@ import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'teleport.freezed.dart';
 
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `new`, `react`
 
 Future<void> initLogging() =>
     RustLib.instance.api.crateApiTeleportInitLogging();
@@ -35,11 +36,6 @@ abstract class AppState implements RustOpaqueInterface {
   Stream<InboundPairingEvent> pairingSubscription();
 
   Future<List<(String, String)>> peers();
-
-  Future<void> reactToPairing({
-    required String peer,
-    required UIPairReaction reaction,
-  });
 
   Future<void> sendFile({
     required String peer,
@@ -124,16 +120,24 @@ class InboundPair {
   final String peer;
   final String friendlyName;
   final U8Array6 pairingCode;
+  final PromiseReactorUiPairReaction reactor;
 
   const InboundPair({
     required this.peer,
     required this.friendlyName,
     required this.pairingCode,
+    required this.reactor,
   });
+
+  Future<void> react({required UIPairReaction value}) => RustLib.instance.api
+      .crateApiTeleportInboundPairReact(that: this, value: value);
 
   @override
   int get hashCode =>
-      peer.hashCode ^ friendlyName.hashCode ^ pairingCode.hashCode;
+      peer.hashCode ^
+      friendlyName.hashCode ^
+      pairingCode.hashCode ^
+      reactor.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -142,7 +146,8 @@ class InboundPair {
           runtimeType == other.runtimeType &&
           peer == other.peer &&
           friendlyName == other.friendlyName &&
-          pairingCode == other.pairingCode;
+          pairingCode == other.pairingCode &&
+          reactor == other.reactor;
 }
 
 @freezed
@@ -157,13 +162,4 @@ sealed class InboundPairingEvent with _$InboundPairingEvent {
       InboundPairingEvent_FailedPair;
 }
 
-@freezed
-sealed class UIPairReaction with _$UIPairReaction {
-  const UIPairReaction._();
-
-  const factory UIPairReaction.accept({required String ourName}) =
-      UIPairReaction_Accept;
-  const factory UIPairReaction.reject() = UIPairReaction_Reject;
-  const factory UIPairReaction.wrongPairingCode() =
-      UIPairReaction_WrongPairingCode;
-}
+enum UIPairReaction { accept, reject, wrongPairingCode }

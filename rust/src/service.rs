@@ -15,11 +15,12 @@ use tracing::{info, warn};
 
 use crate::{
     api::teleport::{
-        CompletedPair, FailedPair, InboundFile, InboundPair, InboundPairingEvent, UIPairReaction,
+        CompletedPair, FailedPair, InboundFile, InboundPair, InboundPairingEvent, Resolver,
+        UIPairReaction,
     },
     config::{ConfigManager, Peer},
-    frb_generated::StreamSink,
-    promise::{PromiseFinal, PromiseFinalSender, init_promise, promise},
+    frb_generated::{RustAutoOpaque, StreamSink},
+    promise::{Promise, init_promise},
     protocol::{
         framed::FramedBiStream,
         pair::{self, MAX_SIZE, Pair, PairAcceptor},
@@ -39,7 +40,6 @@ pub struct Dispatcher {
 
 pub struct InboundPairingState {
     subscription: Option<StreamSink<InboundPairingEvent>>,
-    pending_reaction: HashMap<EndpointId, PromiseFinalSender<UIPairReaction>>,
     friendly_names: HashMap<EndpointId, String>,
 }
 
@@ -86,9 +86,8 @@ impl Actor for Dispatcher {
         info!("EndpointID: {}", router.endpoint().id());
         info!("Router started");
 
-        let inbound_pairing_state = InboundPairingState {
+        let inbound_pairings = InboundPairingState {
             subscription: None,
-            pending_reaction: HashMap::new(),
             friendly_names: HashMap::new(),
         };
 
@@ -99,7 +98,7 @@ impl Actor for Dispatcher {
             temp_dir,
             downloader,
             file_subscription: None,
-            inbound_pairings: inbound_pairing_state,
+            inbound_pairings,
         })
     }
 }
@@ -135,8 +134,9 @@ impl Message<BGRequest> for Dispatcher {
     ) -> Self::Reply {
         match msg {
             BGRequest::IncomingPairStarted { from, name, code } => {
-                let promise = self.incoming_pair_started(from, name, code).await;
-                BGResponse::IncomingPair(promise)
+                let reaction = self.incoming_pair_started(from, name, code).await;
+                let our_name = self.manager.name.clone();
+                BGResponse::IncomingPair { reaction, our_name }
             }
             BGRequest::IncomingPairFinished { peer, outcome } => {
                 self.incoming_pair_finished(peer, outcome).await;
@@ -167,26 +167,6 @@ impl Message<UIRequest> for Dispatcher {
             }
             UIRequest::FileSubscription(sub) => {
                 self.file_subscription = Some(sub);
-                UIResponse::Ack
-            }
-            UIRequest::ReactToPairing { peer, reaction } => {
-                if let Some(sender) = self.inbound_pairings.pending_reaction.remove(&peer) {
-                    match reaction {
-                        UIPairReaction::Accept { .. } => {
-                            sender.send(UIPairReaction::Accept {
-                                our_name: self.manager.name.clone(),
-                            });
-                        }
-                        UIPairReaction::Reject => {
-                            sender.send(UIPairReaction::Reject);
-                        }
-                        UIPairReaction::WrongPairingCode => {
-                            sender.send(UIPairReaction::WrongPairingCode);
-                        }
-                    }
-                } else {
-                    warn!("No pending pairing for {peer}, ignoring reaction");
-                }
                 UIResponse::Ack
             }
             UIRequest::SetTargetDir(path_buf) => {
@@ -240,16 +220,13 @@ impl Dispatcher {
         from: EndpointId,
         friendly_name: String,
         pairing_code: [u8; 6],
-    ) -> PromiseFinal<UIPairReaction> {
-        let (promise, reaction_sender): (
-            PromiseFinal<UIPairReaction>,
-            PromiseFinalSender<UIPairReaction>,
-        ) = init_promise();
+    ) -> Promise<UIPairReaction> {
+        let (promise, resolver) = init_promise();
 
         if let Some(ref ui) = self.inbound_pairings.subscription {
             if self.manager.peers.iter().any(|p| p.id == from) {
                 warn!("Already paired to {from}, ignoring");
-                reaction_sender.send(UIPairReaction::Reject);
+                resolver.emit(UIPairReaction::Reject);
                 return promise;
             }
 
@@ -257,6 +234,7 @@ impl Dispatcher {
                 peer: from.to_string(),
                 friendly_name: friendly_name.clone(),
                 pairing_code,
+                reactor: RustAutoOpaque::new(Resolver::new(resolver)),
             };
 
             ui.add(InboundPairingEvent::InboundPair(pair)).unwrap();
@@ -264,14 +242,6 @@ impl Dispatcher {
             self.inbound_pairings
                 .friendly_names
                 .insert(from, friendly_name);
-
-            if let Some(stale) = self
-                .inbound_pairings
-                .pending_reaction
-                .insert(from, reaction_sender)
-            {
-                stale.send(UIPairReaction::Reject);
-            }
         }
         promise
     }
@@ -396,10 +366,6 @@ pub enum BGRequest {
 pub enum UIRequest {
     PairingSubscription(StreamSink<InboundPairingEvent>),
     FileSubscription(StreamSink<InboundFile>),
-    ReactToPairing {
-        peer: EndpointId,
-        reaction: UIPairReaction,
-    },
     GetTargetDir,
     SetTargetDir(PathBuf),
     GetLocalAddr,
@@ -416,7 +382,10 @@ pub enum UIResponse {
 
 #[derive(Reply)]
 pub enum BGResponse {
-    IncomingPair(promise!(UIPairReaction)),
+    IncomingPair {
+        reaction: Promise<UIPairReaction>,
+        our_name: String,
+    },
     Ack,
 }
 

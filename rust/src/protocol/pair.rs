@@ -83,14 +83,14 @@ impl ProtocolHandler for PairAcceptor {
                 .await
                 .unwrap();
 
-            let BGResponse::IncomingPair(promise) = response else {
+            let BGResponse::IncomingPair { reaction, our_name } = response else {
                 unreachable!()
             };
 
-            let reaction = promise.await;
+            let reaction = reaction.await;
 
             match reaction {
-                UIPairReaction::Accept { our_name } => {
+                UIPairReaction::Accept => {
                     let result = Pair::NiceToMeetYou {
                         friendly_name: our_name,
                     }

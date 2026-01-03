@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::OnceLock};
+use std::{fmt::Debug, path::PathBuf, sync::OnceLock};
 
 use flutter_rust_bridge::frb;
 use iroh::{EndpointAddr, EndpointId};
@@ -8,7 +8,8 @@ use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::Subscriber
 
 use crate::{
     config::ConfigManager,
-    frb_generated::StreamSink,
+    frb_generated::{RustAutoOpaque, StreamSink},
+    promise::PromiseResolver,
     service::{ActionRequest, ActionResponse, Dispatcher, DispatcherArgs, UIRequest, UIResponse},
 };
 
@@ -85,18 +86,6 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn react_to_pairing(
-        &self,
-        peer: String,
-        reaction: UIPairReaction,
-    ) -> anyhow::Result<()> {
-        let peer: EndpointId = peer.parse()?;
-        self.dispatcher
-            .tell(UIRequest::ReactToPairing { peer, reaction })
-            .await?;
-        Ok(())
-    }
-
     pub async fn pairing_subscription(
         &self,
         stream: StreamSink<InboundPairingEvent>,
@@ -135,6 +124,25 @@ pub struct InboundPair {
     pub peer: String,
     pub friendly_name: String,
     pub pairing_code: [u8; 6],
+    pub reactor: RustAutoOpaque<Resolver<UIPairReaction>>,
+}
+
+impl InboundPair {
+    pub async fn react(&self, value: UIPairReaction) {
+        self.reactor.write().await.resolve(value);
+    }
+}
+
+#[frb(opaque)]
+pub struct Resolver<T>(Option<PromiseResolver<T>>);
+
+impl<T: Debug> Resolver<T> {
+    pub fn new(sender: PromiseResolver<T>) -> Self {
+        Self(Some(sender))
+    }
+    pub fn resolve(&mut self, value: T) {
+        self.0.take().unwrap().emit(value);
+    }
 }
 
 #[frb]
@@ -153,7 +161,7 @@ pub struct FailedPair {
 #[frb]
 #[derive(Debug)]
 pub enum UIPairReaction {
-    Accept { our_name: String },
+    Accept,
     Reject,
     WrongPairingCode,
 }
