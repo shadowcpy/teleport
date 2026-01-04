@@ -1,14 +1,16 @@
+use std::path::PathBuf;
+
 use anyhow::{Result, bail};
-use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use futures_util::{SinkExt, TryStreamExt};
 use iroh::{
     EndpointId,
     endpoint::Connection,
     protocol::{AcceptError, ProtocolHandler},
 };
-use iroh_blobs::{api::downloader::DownloadProgressItem, ticket::BlobTicket};
+use iroh_quinn_proto::VarInt;
 use kameo::actor::ActorRef;
 use serde::{Deserialize, Serialize};
-use tokio::spawn;
+use tokio::{fs::File, io::AsyncWriteExt, spawn};
 use tokio_util::bytes::BytesMut;
 use tracing::{error, info};
 
@@ -18,25 +20,34 @@ use crate::{
 };
 
 pub const ALPN: &[u8] = b"teleport/send/0";
-pub const MAX_SIZE: usize = 4096;
+
+pub const CHUNK_SIZE: usize = 1024 * 256; // 256 KiB
+pub const MAX_MSG_SIZE: usize = CHUNK_SIZE + 1024;
+
+pub const MAX_FILE_SIZE: u64 = 1024 * 1024 * 1024 * 20; // 20 GiB
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Offer {
     pub name: String,
     pub size: u64,
-    pub blob_ticket: BlobTicket,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Chunk {
+    pub hash: blake3::Hash,
+    pub data: Vec<u8>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SendRequest {
     Offer(Offer),
+    Chunk(Option<Chunk>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SendResponse {
     Accept,
     Reject,
-    Progress { val: u64 },
     Done,
     Error(String),
 }
@@ -73,7 +84,38 @@ impl SendResponse {
     }
 }
 
-// The protocol definition:
+#[derive(Debug, thiserror::Error)]
+enum SendError {
+    #[error("Failed to receive request: {0}")]
+    Recv(#[from] anyhow::Error),
+    #[error("Expected offer request")]
+    ExpectedOffer,
+    #[error("Failed to send response: {0}")]
+    Send(anyhow::Error),
+    #[error("Failed to write to file: {0}")]
+    WriteFile(std::io::Error),
+    #[error("Chunk hash mismatch")]
+    HashMismatch,
+    #[error("Received more data than expected")]
+    Oversize,
+    #[error("Invalid chunk")]
+    InvalidChunk,
+}
+
+impl SendError {
+    fn to_close_code(&self) -> (VarInt, &'static [u8]) {
+        match self {
+            SendError::Recv(_) => (1u32.into(), b"RECV_ERR"),
+            SendError::ExpectedOffer => (1u32.into(), b"EXP_OFFER"),
+            SendError::Send(_) => (1u32.into(), b"SEND_ERR"),
+            SendError::WriteFile(_) => (1u32.into(), b"WRITE_ERR"),
+            SendError::HashMismatch => (1u32.into(), b"HASH_MISMATCH"),
+            SendError::Oversize => (1u32.into(), b"OVERSIZE"),
+            SendError::InvalidChunk => (1u32.into(), b"INV_CHUNK"),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SendAcceptor {
     pub dispatcher: ActorRef<Dispatcher>,
@@ -82,138 +124,133 @@ pub struct SendAcceptor {
 impl ProtocolHandler for SendAcceptor {
     async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
         let (send, recv) = connection.accept_bi().await?;
-        let mut framed = FramedBiStream::new((send, recv), MAX_SIZE);
+        let mut framed = FramedBiStream::new((send, recv), MAX_MSG_SIZE);
         let dispatcher = self.dispatcher.clone();
         let peer_id = connection.remote_id();
 
         spawn(async move {
-            let req = match SendRequest::recv(&mut framed).await {
-                Ok(req) => req,
-                Err(e) => {
-                    error!("Failed to receive request: {e}");
-                    return;
+            let action = async {
+                let req = SendRequest::recv(&mut framed).await?;
+                let SendRequest::Offer(offer) = req else {
+                    return Err(SendError::ExpectedOffer);
+                };
+
+                info!("Got an offer: {offer:?}, from {peer_id}");
+                let size = offer.size;
+
+                if size > MAX_FILE_SIZE {
+                    error!("File size too large: {size}");
+                    return Err(SendError::Oversize);
                 }
-            };
 
-            let SendRequest::Offer(offer) = req;
+                let response = dispatcher
+                    .ask(BGRequest::IncomingOffer {
+                        offer: offer.clone(),
+                        from: peer_id,
+                    })
+                    .await
+                    .unwrap();
 
-            info!("Got an offer: {offer:?}, from {peer_id}");
+                let BGResponse::IncomingOffer { download } = response else {
+                    unreachable!()
+                };
 
-            let response = dispatcher
-                .ask(BGRequest::IncomingOffer {
-                    ticket: offer.blob_ticket.clone(),
-                    from: peer_id,
-                })
-                .await
-                .unwrap();
+                let Some(path) = download else {
+                    if let Err(e) = SendResponse::Reject.send(&mut framed).await {
+                        error!("Failed to send reject response: {e}");
+                    }
+                    info!("Offer from unknown peer {peer_id} rejected");
+                    return Ok(());
+                };
 
-            let BGResponse::IncomingOffer { download } = response else {
-                unreachable!()
-            };
-
-            if let Some(download) = download {
                 if let Err(e) = SendResponse::Accept.send(&mut framed).await {
-                    error!("Failed to send accept response: {e}");
-                    connection.close(1u32.into(), b"ACCEPT_ERR");
-                    dispatcher
-                        .tell(BGRequest::DownloadStatus(DownloadStatus {
-                            peer: peer_id,
-                            status: FileStatus::Error(e.to_string()),
-                        }))
-                        .await
-                        .unwrap();
-                    return;
+                    return Err(SendError::Send(e));
                 }
+
+                let mut temp_file = File::create(&path).await.map_err(SendError::WriteFile)?;
 
                 dispatcher
                     .tell(BGRequest::DownloadStatus(DownloadStatus {
                         peer: peer_id,
-                        status: FileStatus::Progress {
-                            offset: 0,
-                            size: offer.size,
-                        },
+                        status: FileStatus::Progress { offset: 0, size },
                     }))
                     .await
                     .unwrap();
 
-                let mut progress = match download.stream().await {
-                    Ok(progress) => progress,
-                    Err(e) => {
-                        error!("Failed to get download stream for offer from {peer_id}: {e}");
-                        connection.close(1u32.into(), b"DL_ERR");
-                        dispatcher
-                            .tell(BGRequest::DownloadStatus(DownloadStatus {
-                                peer: peer_id,
-                                status: FileStatus::Error(e.to_string()),
-                            }))
-                            .await
-                            .unwrap();
-                        return;
-                    }
-                };
+                let mut offset = 0u64;
 
-                while let Some(status) = progress.next().await {
-                    let (internal, external) = match status {
-                        DownloadProgressItem::Progress(val) if val % 100 == 0 => (
-                            FileStatus::Progress {
-                                offset: val,
-                                size: offer.size,
-                            },
-                            SendResponse::Progress { val },
-                        ),
-                        DownloadProgressItem::DownloadError => {
-                            let err_msg = format!("Download error");
-                            (
-                                FileStatus::Error(err_msg.clone()),
-                                SendResponse::Error(err_msg),
-                            )
-                        }
-                        DownloadProgressItem::PartComplete { .. } => {
-                            (FileStatus::Done(offer.clone()), SendResponse::Done)
-                        }
-                        DownloadProgressItem::Error(e) => {
-                            let err_msg = format!("Download error: {e}");
-                            (
-                                FileStatus::Error(e.to_string()),
-                                SendResponse::Error(err_msg),
-                            )
-                        }
-                        _ => continue,
+                loop {
+                    let req = SendRequest::recv(&mut framed).await?;
+
+                    let SendRequest::Chunk(chunk) = req else {
+                        return Err(SendError::InvalidChunk);
                     };
+
+                    let Some(chunk) = chunk else {
+                        break;
+                    };
+
+                    let expected_hash = blake3::hash(&chunk.data);
+                    if chunk.hash != expected_hash {
+                        return Err(SendError::HashMismatch);
+                    }
+
+                    if let Err(e) = temp_file.write_all(&chunk.data).await {
+                        return Err(SendError::WriteFile(e));
+                    }
+
+                    offset += chunk.data.len() as u64;
+
+                    info!("Received chunk from {peer_id} ({offset}/{size}): {expected_hash}");
+
+                    if offset > size {
+                        return Err(SendError::Oversize);
+                    }
+
                     dispatcher
                         .tell(BGRequest::DownloadStatus(DownloadStatus {
                             peer: peer_id,
-                            status: internal.clone(),
+                            status: FileStatus::Progress { offset, size },
                         }))
                         .await
                         .unwrap();
-
-                    let result = external.send(&mut framed).await;
-                    if let Err(e) = result {
-                        error!("Failed to send progress response: {e}");
-                        connection.close(1u32.into(), b"CLOSED");
-                        dispatcher
-                            .tell(BGRequest::DownloadStatus(DownloadStatus {
-                                peer: peer_id,
-                                status: FileStatus::Error(e.to_string()),
-                            }))
-                            .await
-                            .unwrap();
-                        break;
-                    }
-                    if matches!(internal, FileStatus::Done(_)) {
-                        info!("Download from {peer_id} completed successfully");
-                        break;
-                    }
                 }
+
+                temp_file.flush().await.map_err(SendError::WriteFile)?;
+                drop(temp_file);
+
+                info!("Download from peer {peer_id} completed");
+                dispatcher
+                    .tell(BGRequest::DownloadStatus(DownloadStatus {
+                        peer: peer_id,
+                        status: FileStatus::Done { offer, path },
+                    }))
+                    .await
+                    .unwrap();
+
+                SendResponse::Done
+                    .send(&mut framed)
+                    .await
+                    .map_err(SendError::Send)?;
+
+                Ok(())
+            };
+
+            if let Err(e) = action.await {
+                error!("Connection failed: {e}");
+                let (code, reason) = e.to_close_code();
+                connection.close(code, reason);
+
+                dispatcher
+                    .tell(BGRequest::DownloadStatus(DownloadStatus {
+                        peer: peer_id,
+                        status: FileStatus::Error(e.to_string()),
+                    }))
+                    .await
+                    .ok();
             } else {
-                if let Err(e) = SendResponse::Reject.send(&mut framed).await {
-                    error!("Failed to send reject response: {e}");
-                }
-                info!("Offer from unknown peer {peer_id} rejected");
+                let _ = connection.closed().await;
             }
-
-            let _ = connection.closed().await;
         });
 
         Ok(())
@@ -228,6 +265,6 @@ pub struct DownloadStatus {
 #[derive(Debug, Clone)]
 pub enum FileStatus {
     Progress { offset: u64, size: u64 },
-    Done(Offer),
+    Done { offer: Offer, path: PathBuf },
     Error(String),
 }

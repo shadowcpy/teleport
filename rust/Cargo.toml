@@ -8,6 +8,8 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 anyhow = "1.0.100"
+blake3 = { version = "1.8.2", features = ["serde"] }
+thiserror = "2.0"
 flutter_rust_bridge = { version = "=2.11.1", default-features = false, features = [
     "anyhow",
     "dart-opaque",

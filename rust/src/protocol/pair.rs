@@ -27,12 +27,14 @@ pub enum Pair {
     Helo {
         friendly_name: String,
         pairing_code: [u8; 6],
+        secret: Vec<u8>,
     },
     FuckOff,
     NiceToMeetYou {
         friendly_name: String,
     },
     WrongPairingCode,
+    WrongSecret,
 }
 
 impl Pair {
@@ -73,11 +75,28 @@ impl ProtocolHandler for PairAcceptor {
             let Pair::Helo {
                 friendly_name: peer_name,
                 pairing_code,
+                secret,
             } = helo
             else {
                 connection.close(1u32.into(), b"INV_HELO");
                 return;
             };
+
+            let Ok(response) = dispatcher.ask(BGRequest::ValidateSecret(secret)).await else {
+                connection.close(1u32.into(), b"INT_ERR");
+                return;
+            };
+
+            let BGResponse::ValidationResult(valid_secret) = response else {
+                unreachable!()
+            };
+
+            if !valid_secret {
+                info!("Invalid secret from {}", connection.remote_id());
+                Pair::WrongSecret.send(&mut framed).await.ok();
+                connection.close(1u32.into(), b"INV_SEC");
+                return;
+            }
 
             info!("Got HELO from {}", connection.remote_id());
 

@@ -211,6 +211,10 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
           try {
             await pair.react(reaction: reaction);
 
+            // Refresh address info (secret rotation)
+            final newInfo = await widget.state.getAddr();
+            if (mounted) setState(() => _pairingInfo = newInfo);
+
             if (reaction == UIPairReaction.accept) {
               final newPeers = await widget.state.peers();
               if (mounted) {

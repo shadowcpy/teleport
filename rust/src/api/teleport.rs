@@ -1,7 +1,7 @@
 use std::{fmt::Debug, path::PathBuf, sync::OnceLock};
 
 use flutter_rust_bridge::frb;
-use iroh::{EndpointAddr, EndpointId};
+use iroh::EndpointId;
 use kameo::actor::{ActorRef, Spawn};
 use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
@@ -10,7 +10,10 @@ use crate::{
     config::ConfigManager,
     frb_generated::{RustAutoOpaque, StreamSink},
     promise::{self, Promise, PromiseResolver},
-    service::{ActionRequest, ActionResponse, Dispatcher, DispatcherArgs, UIRequest, UIResponse},
+    service::{
+        ActionRequest, ActionResponse, BGRequest, BGResponse, Dispatcher, DispatcherArgs, PeerInfo,
+        UIRequest, UIResponse,
+    },
 };
 
 #[frb]
@@ -36,8 +39,15 @@ impl AppState {
         let UIResponse::GetLocalAddr(addr) = response else {
             unreachable!()
         };
-        let info = serde_json::to_string(&addr)?;
-        Ok(info)
+
+        let response = self.dispatcher.ask(BGRequest::GetSecret).await?;
+        let BGResponse::Secret(secret) = response else {
+            unreachable!()
+        };
+
+        let info = PeerInfo { addr, secret };
+
+        Ok(serde_json::to_string(&info)?)
     }
 
     pub async fn peers(&self) -> anyhow::Result<Vec<(String, String)>> {
@@ -56,10 +66,14 @@ impl AppState {
         info: String,
         pairing_code: [u8; 6],
     ) -> anyhow::Result<PairingResponse> {
-        let peer: EndpointAddr = serde_json::from_str(&info)?;
+        let peer_info: PeerInfo = serde_json::from_str(&info)?;
         let response = self
             .dispatcher
-            .ask(ActionRequest::PairWith { peer, pairing_code })
+            .ask(ActionRequest::PairWith {
+                peer: peer_info.addr,
+                secret: peer_info.secret,
+                pairing_code,
+            })
             .await?;
         let ActionResponse::PairWith(result) = response else {
             unreachable!()
@@ -211,6 +225,7 @@ pub enum UIPairReaction {
 pub enum PairingResponse {
     Success,
     WrongCode,
+    WrongSecret,
     Error(String),
 }
 
