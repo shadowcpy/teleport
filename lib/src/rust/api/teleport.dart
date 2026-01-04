@@ -6,8 +6,10 @@
 import '../frb_generated.dart';
 import '../lib.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+part 'teleport.freezed.dart';
 
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `fmt`, `fmt`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `new`, `new`, `resolve`, `result`
 
 Future<void> initLogging() =>
@@ -15,9 +17,11 @@ Future<void> initLogging() =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>>
 abstract class AppState implements RustOpaqueInterface {
-  Stream<InboundFile> fileSubscription();
+  Stream<InboundFileEvent> fileSubscription();
 
   Future<String> getAddr();
+
+  Future<String> getDeviceName();
 
   Future<String?> getTargetDir();
 
@@ -29,47 +33,64 @@ abstract class AppState implements RustOpaqueInterface {
     persistenceDir: persistenceDir,
   );
 
-  Future<void> pairWith({required String info, required U8Array6 pairingCode});
+  Future<PairingResponse> pairWith({
+    required String info,
+    required U8Array6 pairingCode,
+  });
 
   Stream<InboundPair> pairingSubscription();
 
   Future<List<(String, String)>> peers();
 
-  Future<void> sendFile({
+  Stream<OutboundFileStatus> sendFile({
     required String peer,
     required String name,
     required String path,
   });
 
+  Future<void> setDeviceName({required String name});
+
   Future<void> setTargetDir({required String dir});
 }
 
-class InboundFile {
+class InboundFileEvent {
   final String peer;
   final String name;
-  final BigInt size;
-  final String path;
+  final InboundFileStatus event;
 
-  const InboundFile({
+  const InboundFileEvent({
     required this.peer,
     required this.name,
-    required this.size,
-    required this.path,
+    required this.event,
   });
 
   @override
-  int get hashCode =>
-      peer.hashCode ^ name.hashCode ^ size.hashCode ^ path.hashCode;
+  int get hashCode => peer.hashCode ^ name.hashCode ^ event.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is InboundFile &&
+      other is InboundFileEvent &&
           runtimeType == other.runtimeType &&
           peer == other.peer &&
           name == other.name &&
-          size == other.size &&
-          path == other.path;
+          event == other.event;
+}
+
+@freezed
+sealed class InboundFileStatus with _$InboundFileStatus {
+  const InboundFileStatus._();
+
+  const factory InboundFileStatus.progress({
+    required BigInt offset,
+    required BigInt size,
+  }) = InboundFileStatus_Progress;
+  const factory InboundFileStatus.done({
+    required String path,
+    required String name,
+  }) = InboundFileStatus_Done;
+  const factory InboundFileStatus.error(String field0) =
+      InboundFileStatus_Error;
 }
 
 class InboundPair {
@@ -111,6 +132,28 @@ class InboundPair {
           pairingCode == other.pairingCode &&
           reaction == other.reaction &&
           outcome == other.outcome;
+}
+
+@freezed
+sealed class OutboundFileStatus with _$OutboundFileStatus {
+  const OutboundFileStatus._();
+
+  const factory OutboundFileStatus.progress({
+    required BigInt offset,
+    required BigInt size,
+  }) = OutboundFileStatus_Progress;
+  const factory OutboundFileStatus.done() = OutboundFileStatus_Done;
+  const factory OutboundFileStatus.error(String field0) =
+      OutboundFileStatus_Error;
+}
+
+@freezed
+sealed class PairingResponse with _$PairingResponse {
+  const PairingResponse._();
+
+  const factory PairingResponse.success() = PairingResponse_Success;
+  const factory PairingResponse.wrongCode() = PairingResponse_WrongCode;
+  const factory PairingResponse.error(String field0) = PairingResponse_Error;
 }
 
 enum UIPairReaction { accept, reject, wrongPairingCode }

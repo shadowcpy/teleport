@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => 937523829;
+  int get rustContentHash => -1259937894;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -78,11 +78,15 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
-  Stream<InboundFile> crateApiTeleportAppStateFileSubscription({
+  Stream<InboundFileEvent> crateApiTeleportAppStateFileSubscription({
     required AppState that,
   });
 
   Future<String> crateApiTeleportAppStateGetAddr({required AppState that});
+
+  Future<String> crateApiTeleportAppStateGetDeviceName({
+    required AppState that,
+  });
 
   Future<String?> crateApiTeleportAppStateGetTargetDir({
     required AppState that,
@@ -93,7 +97,7 @@ abstract class RustLibApi extends BaseApi {
     required String persistenceDir,
   });
 
-  Future<void> crateApiTeleportAppStatePairWith({
+  Future<PairingResponse> crateApiTeleportAppStatePairWith({
     required AppState that,
     required String info,
     required U8Array6 pairingCode,
@@ -107,11 +111,16 @@ abstract class RustLibApi extends BaseApi {
     required AppState that,
   });
 
-  Future<void> crateApiTeleportAppStateSendFile({
+  Stream<OutboundFileStatus> crateApiTeleportAppStateSendFile({
     required AppState that,
     required String peer,
     required String name,
     required String path,
+  });
+
+  Future<void> crateApiTeleportAppStateSetDeviceName({
+    required AppState that,
+    required String name,
   });
 
   Future<void> crateApiTeleportAppStateSetTargetDir({
@@ -166,10 +175,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
-  Stream<InboundFile> crateApiTeleportAppStateFileSubscription({
+  Stream<InboundFileEvent> crateApiTeleportAppStateFileSubscription({
     required AppState that,
   }) {
-    final stream = RustStreamSink<InboundFile>();
+    final stream = RustStreamSink<InboundFileEvent>();
     unawaited(
       handler.executeNormal(
         NormalTask(
@@ -179,7 +188,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
               that,
               serializer,
             );
-            sse_encode_StreamSink_inbound_file_Sse(stream, serializer);
+            sse_encode_StreamSink_inbound_file_event_Sse(stream, serializer);
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
@@ -238,7 +247,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "AppState_get_addr", argNames: ["that"]);
 
   @override
-  Future<String?> crateApiTeleportAppStateGetTargetDir({
+  Future<String> crateApiTeleportAppStateGetDeviceName({
     required AppState that,
   }) {
     return handler.executeNormal(
@@ -253,6 +262,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             generalizedFrbRustBinding,
             serializer,
             funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiTeleportAppStateGetDeviceNameConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiTeleportAppStateGetDeviceNameConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_get_device_name",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<String?> crateApiTeleportAppStateGetTargetDir({
+    required AppState that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
             port: port_,
           );
         },
@@ -287,7 +332,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -310,7 +355,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<void> crateApiTeleportAppStatePairWith({
+  Future<PairingResponse> crateApiTeleportAppStatePairWith({
     required AppState that,
     required String info,
     required U8Array6 pairingCode,
@@ -328,12 +373,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
+          decodeSuccessData: sse_decode_pairing_response,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiTeleportAppStatePairWithConstMeta,
@@ -367,7 +412,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 6,
+              funcId: 7,
               port: port_,
             );
           },
@@ -405,7 +450,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 8,
             port: port_,
           );
         },
@@ -424,11 +469,59 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "AppState_peers", argNames: ["that"]);
 
   @override
-  Future<void> crateApiTeleportAppStateSendFile({
+  Stream<OutboundFileStatus> crateApiTeleportAppStateSendFile({
     required AppState that,
     required String peer,
     required String name,
     required String path,
+  }) {
+    final progress = RustStreamSink<OutboundFileStatus>();
+    unawaited(
+      handler.executeNormal(
+        NormalTask(
+          callFfi: (port_) {
+            final serializer = SseSerializer(generalizedFrbRustBinding);
+            sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerAppState(
+              that,
+              serializer,
+            );
+            sse_encode_String(peer, serializer);
+            sse_encode_String(name, serializer);
+            sse_encode_String(path, serializer);
+            sse_encode_StreamSink_outbound_file_status_Sse(
+              progress,
+              serializer,
+            );
+            pdeCallFfi(
+              generalizedFrbRustBinding,
+              serializer,
+              funcId: 9,
+              port: port_,
+            );
+          },
+          codec: SseCodec(
+            decodeSuccessData: sse_decode_unit,
+            decodeErrorData: sse_decode_AnyhowException,
+          ),
+          constMeta: kCrateApiTeleportAppStateSendFileConstMeta,
+          argValues: [that, peer, name, path, progress],
+          apiImpl: this,
+        ),
+      ),
+    );
+    return progress.stream;
+  }
+
+  TaskConstMeta get kCrateApiTeleportAppStateSendFileConstMeta =>
+      const TaskConstMeta(
+        debugName: "AppState_send_file",
+        argNames: ["that", "peer", "name", "path", "progress"],
+      );
+
+  @override
+  Future<void> crateApiTeleportAppStateSetDeviceName({
+    required AppState that,
+    required String name,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -438,13 +531,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          sse_encode_String(peer, serializer);
           sse_encode_String(name, serializer);
-          sse_encode_String(path, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -452,17 +543,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         ),
-        constMeta: kCrateApiTeleportAppStateSendFileConstMeta,
-        argValues: [that, peer, name, path],
+        constMeta: kCrateApiTeleportAppStateSetDeviceNameConstMeta,
+        argValues: [that, name],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiTeleportAppStateSendFileConstMeta =>
+  TaskConstMeta get kCrateApiTeleportAppStateSetDeviceNameConstMeta =>
       const TaskConstMeta(
-        debugName: "AppState_send_file",
-        argNames: ["that", "peer", "name", "path"],
+        debugName: "AppState_set_device_name",
+        argNames: ["that", "name"],
       );
 
   @override
@@ -482,7 +573,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -517,7 +608,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -548,7 +639,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -575,7 +666,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -602,7 +693,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -720,7 +811,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<InboundFile> dco_decode_StreamSink_inbound_file_Sse(
+  RustStreamSink<InboundFileEvent> dco_decode_StreamSink_inbound_file_event_Sse(
     dynamic raw,
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
@@ -731,6 +822,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustStreamSink<InboundPair> dco_decode_StreamSink_inbound_pair_Sse(
     dynamic raw,
   ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError();
+  }
+
+  @protected
+  RustStreamSink<OutboundFileStatus>
+  dco_decode_StreamSink_outbound_file_status_Sse(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     throw UnimplementedError();
   }
@@ -754,17 +852,37 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  InboundFile dco_decode_inbound_file(dynamic raw) {
+  InboundFileEvent dco_decode_inbound_file_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return InboundFile(
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return InboundFileEvent(
       peer: dco_decode_String(arr[0]),
       name: dco_decode_String(arr[1]),
-      size: dco_decode_u_64(arr[2]),
-      path: dco_decode_String(arr[3]),
+      event: dco_decode_inbound_file_status(arr[2]),
     );
+  }
+
+  @protected
+  InboundFileStatus dco_decode_inbound_file_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return InboundFileStatus_Progress(
+          offset: dco_decode_u_64(raw[1]),
+          size: dco_decode_u_64(raw[2]),
+        );
+      case 1:
+        return InboundFileStatus_Done(
+          path: dco_decode_String(raw[1]),
+          name: dco_decode_String(raw[2]),
+        );
+      case 2:
+        return InboundFileStatus_Error(dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -804,6 +922,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  OutboundFileStatus dco_decode_outbound_file_status(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return OutboundFileStatus_Progress(
+          offset: dco_decode_u_64(raw[1]),
+          size: dco_decode_u_64(raw[2]),
+        );
+      case 1:
+        return OutboundFileStatus_Done();
+      case 2:
+        return OutboundFileStatus_Error(dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  PairingResponse dco_decode_pairing_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return PairingResponse_Success();
+      case 1:
+        return PairingResponse_WrongCode();
+      case 2:
+        return PairingResponse_Error(dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -946,7 +1097,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  RustStreamSink<InboundFile> sse_decode_StreamSink_inbound_file_Sse(
+  RustStreamSink<InboundFileEvent> sse_decode_StreamSink_inbound_file_event_Sse(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -957,6 +1108,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustStreamSink<InboundPair> sse_decode_StreamSink_inbound_pair_Sse(
     SseDeserializer deserializer,
   ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    throw UnimplementedError('Unreachable ()');
+  }
+
+  @protected
+  RustStreamSink<OutboundFileStatus>
+  sse_decode_StreamSink_outbound_file_status_Sse(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     throw UnimplementedError('Unreachable ()');
   }
@@ -983,18 +1141,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  InboundFile sse_decode_inbound_file(SseDeserializer deserializer) {
+  InboundFileEvent sse_decode_inbound_file_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_peer = sse_decode_String(deserializer);
     var var_name = sse_decode_String(deserializer);
-    var var_size = sse_decode_u_64(deserializer);
-    var var_path = sse_decode_String(deserializer);
-    return InboundFile(
-      peer: var_peer,
-      name: var_name,
-      size: var_size,
-      path: var_path,
-    );
+    var var_event = sse_decode_inbound_file_status(deserializer);
+    return InboundFileEvent(peer: var_peer, name: var_name, event: var_event);
+  }
+
+  @protected
+  InboundFileStatus sse_decode_inbound_file_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_offset = sse_decode_u_64(deserializer);
+        var var_size = sse_decode_u_64(deserializer);
+        return InboundFileStatus_Progress(offset: var_offset, size: var_size);
+      case 1:
+        var var_path = sse_decode_String(deserializer);
+        var var_name = sse_decode_String(deserializer);
+        return InboundFileStatus_Done(path: var_path, name: var_name);
+      case 2:
+        var var_field0 = sse_decode_String(deserializer);
+        return InboundFileStatus_Error(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1049,6 +1225,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       return (sse_decode_String(deserializer));
     } else {
       return null;
+    }
+  }
+
+  @protected
+  OutboundFileStatus sse_decode_outbound_file_status(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_offset = sse_decode_u_64(deserializer);
+        var var_size = sse_decode_u_64(deserializer);
+        return OutboundFileStatus_Progress(offset: var_offset, size: var_size);
+      case 1:
+        return OutboundFileStatus_Done();
+      case 2:
+        var var_field0 = sse_decode_String(deserializer);
+        return OutboundFileStatus_Error(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  PairingResponse sse_decode_pairing_response(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        return PairingResponse_Success();
+      case 1:
+        return PairingResponse_WrongCode();
+      case 2:
+        var var_field0 = sse_decode_String(deserializer);
+        return PairingResponse_Error(var_field0);
+      default:
+        throw UnimplementedError('');
     }
   }
 
@@ -1206,15 +1422,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_StreamSink_inbound_file_Sse(
-    RustStreamSink<InboundFile> self,
+  void sse_encode_StreamSink_inbound_file_event_Sse(
+    RustStreamSink<InboundFileEvent> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(
       self.setupAndSerialize(
         codec: SseCodec(
-          decodeSuccessData: sse_decode_inbound_file,
+          decodeSuccessData: sse_decode_inbound_file_event,
           decodeErrorData: sse_decode_AnyhowException,
         ),
       ),
@@ -1232,6 +1448,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       self.setupAndSerialize(
         codec: SseCodec(
           decodeSuccessData: sse_decode_inbound_pair,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_StreamSink_outbound_file_status_Sse(
+    RustStreamSink<OutboundFileStatus> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(
+      self.setupAndSerialize(
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_outbound_file_status,
           decodeErrorData: sse_decode_AnyhowException,
         ),
       ),
@@ -1261,12 +1494,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_inbound_file(InboundFile self, SseSerializer serializer) {
+  void sse_encode_inbound_file_event(
+    InboundFileEvent self,
+    SseSerializer serializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.peer, serializer);
     sse_encode_String(self.name, serializer);
-    sse_encode_u_64(self.size, serializer);
-    sse_encode_String(self.path, serializer);
+    sse_encode_inbound_file_status(self.event, serializer);
+  }
+
+  @protected
+  void sse_encode_inbound_file_status(
+    InboundFileStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case InboundFileStatus_Progress(offset: final offset, size: final size):
+        sse_encode_i_32(0, serializer);
+        sse_encode_u_64(offset, serializer);
+        sse_encode_u_64(size, serializer);
+      case InboundFileStatus_Done(path: final path, name: final name):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(path, serializer);
+        sse_encode_String(name, serializer);
+      case InboundFileStatus_Error(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(field0, serializer);
+    }
   }
 
   @protected
@@ -1314,6 +1570,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_bool(self != null, serializer);
     if (self != null) {
       sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_outbound_file_status(
+    OutboundFileStatus self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case OutboundFileStatus_Progress(offset: final offset, size: final size):
+        sse_encode_i_32(0, serializer);
+        sse_encode_u_64(offset, serializer);
+        sse_encode_u_64(size, serializer);
+      case OutboundFileStatus_Done():
+        sse_encode_i_32(1, serializer);
+      case OutboundFileStatus_Error(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(field0, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_pairing_response(
+    PairingResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case PairingResponse_Success():
+        sse_encode_i_32(0, serializer);
+      case PairingResponse_WrongCode():
+        sse_encode_i_32(1, serializer);
+      case PairingResponse_Error(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(field0, serializer);
     }
   }
 
@@ -1391,16 +1683,19 @@ class AppStateImpl extends RustOpaque implements AppState {
         RustLib.instance.api.rust_arc_decrement_strong_count_AppStatePtr,
   );
 
-  Stream<InboundFile> fileSubscription() =>
+  Stream<InboundFileEvent> fileSubscription() =>
       RustLib.instance.api.crateApiTeleportAppStateFileSubscription(that: this);
 
   Future<String> getAddr() =>
       RustLib.instance.api.crateApiTeleportAppStateGetAddr(that: this);
 
+  Future<String> getDeviceName() =>
+      RustLib.instance.api.crateApiTeleportAppStateGetDeviceName(that: this);
+
   Future<String?> getTargetDir() =>
       RustLib.instance.api.crateApiTeleportAppStateGetTargetDir(that: this);
 
-  Future<void> pairWith({
+  Future<PairingResponse> pairWith({
     required String info,
     required U8Array6 pairingCode,
   }) => RustLib.instance.api.crateApiTeleportAppStatePairWith(
@@ -1415,7 +1710,7 @@ class AppStateImpl extends RustOpaque implements AppState {
   Future<List<(String, String)>> peers() =>
       RustLib.instance.api.crateApiTeleportAppStatePeers(that: this);
 
-  Future<void> sendFile({
+  Stream<OutboundFileStatus> sendFile({
     required String peer,
     required String name,
     required String path,
@@ -1425,6 +1720,9 @@ class AppStateImpl extends RustOpaque implements AppState {
     name: name,
     path: path,
   );
+
+  Future<void> setDeviceName({required String name}) => RustLib.instance.api
+      .crateApiTeleportAppStateSetDeviceName(that: this, name: name);
 
   Future<void> setTargetDir({required String dir}) => RustLib.instance.api
       .crateApiTeleportAppStateSetTargetDir(that: this, dir: dir);

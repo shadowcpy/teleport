@@ -51,7 +51,11 @@ impl AppState {
             .collect())
     }
 
-    pub async fn pair_with(&self, info: String, pairing_code: [u8; 6]) -> anyhow::Result<()> {
+    pub async fn pair_with(
+        &self,
+        info: String,
+        pairing_code: [u8; 6],
+    ) -> anyhow::Result<PairingResponse> {
         let peer: EndpointAddr = serde_json::from_str(&info)?;
         let response = self
             .dispatcher
@@ -60,20 +64,27 @@ impl AppState {
         let ActionResponse::PairWith(result) = response else {
             unreachable!()
         };
-        result.await
+        Ok(result.await)
     }
 
-    pub async fn send_file(&self, peer: String, name: String, path: String) -> anyhow::Result<()> {
+    pub async fn send_file(
+        &self,
+        peer: String,
+        name: String,
+        path: String,
+        progress: StreamSink<OutboundFileStatus>,
+    ) -> anyhow::Result<()> {
         let id: EndpointId = peer.parse()?;
         let path = PathBuf::from(path);
-        let response = self
-            .dispatcher
-            .ask(ActionRequest::SendFile { to: id, name, path })
+        self.dispatcher
+            .tell(ActionRequest::SendFile {
+                to: id,
+                name,
+                path,
+                progress,
+            })
             .await?;
-        let ActionResponse::SendFile(result) = response else {
-            unreachable!()
-        };
-        result
+        Ok(())
     }
 
     pub async fn get_target_dir(&self) -> anyhow::Result<Option<String>> {
@@ -90,6 +101,19 @@ impl AppState {
         Ok(())
     }
 
+    pub async fn get_device_name(&self) -> anyhow::Result<String> {
+        let response = self.dispatcher.ask(UIRequest::GetDeviceName).await?;
+        let UIResponse::GetDeviceName(name) = response else {
+            unreachable!()
+        };
+        Ok(name)
+    }
+
+    pub async fn set_device_name(&self, name: String) -> anyhow::Result<()> {
+        self.dispatcher.tell(UIRequest::SetDeviceName(name)).await?;
+        Ok(())
+    }
+
     pub async fn pairing_subscription(
         &self,
         stream: StreamSink<InboundPair>,
@@ -100,7 +124,10 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn file_subscription(&self, stream: StreamSink<InboundFile>) -> anyhow::Result<()> {
+    pub async fn file_subscription(
+        &self,
+        stream: StreamSink<InboundFileEvent>,
+    ) -> anyhow::Result<()> {
         self.dispatcher
             .tell(UIRequest::FileSubscription(stream))
             .await?;
@@ -109,11 +136,24 @@ impl AppState {
 }
 
 #[frb]
-pub struct InboundFile {
+pub enum OutboundFileStatus {
+    Progress { offset: u64, size: u64 },
+    Done,
+    Error(String),
+}
+
+#[frb]
+pub struct InboundFileEvent {
     pub peer: String,
     pub name: String,
-    pub size: u64,
-    pub path: String,
+    pub event: InboundFileStatus,
+}
+
+#[frb]
+pub enum InboundFileStatus {
+    Progress { offset: u64, size: u64 },
+    Done { path: String, name: String },
+    Error(String),
 }
 
 #[frb]
@@ -164,6 +204,14 @@ pub enum UIPairReaction {
     Accept,
     Reject,
     WrongPairingCode,
+}
+
+#[frb]
+#[derive(Debug)]
+pub enum PairingResponse {
+    Success,
+    WrongCode,
+    Error(String),
 }
 
 #[frb(init)]

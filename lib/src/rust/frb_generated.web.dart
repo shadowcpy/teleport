@@ -79,7 +79,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<InboundFile> dco_decode_StreamSink_inbound_file_Sse(
+  RustStreamSink<InboundFileEvent> dco_decode_StreamSink_inbound_file_event_Sse(
     dynamic raw,
   );
 
@@ -87,6 +87,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustStreamSink<InboundPair> dco_decode_StreamSink_inbound_pair_Sse(
     dynamic raw,
   );
+
+  @protected
+  RustStreamSink<OutboundFileStatus>
+  dco_decode_StreamSink_outbound_file_status_Sse(dynamic raw);
 
   @protected
   String dco_decode_String(dynamic raw);
@@ -98,7 +102,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int dco_decode_i_32(dynamic raw);
 
   @protected
-  InboundFile dco_decode_inbound_file(dynamic raw);
+  InboundFileEvent dco_decode_inbound_file_event(dynamic raw);
+
+  @protected
+  InboundFileStatus dco_decode_inbound_file_status(dynamic raw);
 
   @protected
   InboundPair dco_decode_inbound_pair(dynamic raw);
@@ -111,6 +118,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  OutboundFileStatus dco_decode_outbound_file_status(dynamic raw);
+
+  @protected
+  PairingResponse dco_decode_pairing_response(dynamic raw);
 
   @protected
   (String, String) dco_decode_record_string_string(dynamic raw);
@@ -179,7 +192,7 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  RustStreamSink<InboundFile> sse_decode_StreamSink_inbound_file_Sse(
+  RustStreamSink<InboundFileEvent> sse_decode_StreamSink_inbound_file_event_Sse(
     SseDeserializer deserializer,
   );
 
@@ -187,6 +200,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   RustStreamSink<InboundPair> sse_decode_StreamSink_inbound_pair_Sse(
     SseDeserializer deserializer,
   );
+
+  @protected
+  RustStreamSink<OutboundFileStatus>
+  sse_decode_StreamSink_outbound_file_status_Sse(SseDeserializer deserializer);
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
@@ -198,7 +215,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
-  InboundFile sse_decode_inbound_file(SseDeserializer deserializer);
+  InboundFileEvent sse_decode_inbound_file_event(SseDeserializer deserializer);
+
+  @protected
+  InboundFileStatus sse_decode_inbound_file_status(
+    SseDeserializer deserializer,
+  );
 
   @protected
   InboundPair sse_decode_inbound_pair(SseDeserializer deserializer);
@@ -213,6 +235,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  OutboundFileStatus sse_decode_outbound_file_status(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  PairingResponse sse_decode_pairing_response(SseDeserializer deserializer);
 
   @protected
   (String, String) sse_decode_record_string_string(
@@ -296,14 +326,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_StreamSink_inbound_file_Sse(
-    RustStreamSink<InboundFile> self,
+  void sse_encode_StreamSink_inbound_file_event_Sse(
+    RustStreamSink<InboundFileEvent> self,
     SseSerializer serializer,
   );
 
   @protected
   void sse_encode_StreamSink_inbound_pair_Sse(
     RustStreamSink<InboundPair> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_StreamSink_outbound_file_status_Sse(
+    RustStreamSink<OutboundFileStatus> self,
     SseSerializer serializer,
   );
 
@@ -320,7 +356,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
-  void sse_encode_inbound_file(InboundFile self, SseSerializer serializer);
+  void sse_encode_inbound_file_event(
+    InboundFileEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_inbound_file_status(
+    InboundFileStatus self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_inbound_pair(InboundPair self, SseSerializer serializer);
@@ -339,6 +384,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_outbound_file_status(
+    OutboundFileStatus self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_pairing_response(
+    PairingResponse self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_record_string_string(

@@ -120,12 +120,15 @@ impl ProtocolHandler for PairAcceptor {
                     }
 
                     resolver.emit(result.map_err(|e| e.to_string()));
+                    let _ = connection.closed().await;
                 }
                 UIPairReaction::WrongPairingCode => {
                     Pair::WrongPairingCode.send(&mut framed).await.ok();
+                    let _ = connection.closed().await;
                 }
                 UIPairReaction::Reject => {
                     Pair::FuckOff.send(&mut framed).await.ok();
+                    let _ = connection.closed().await;
                 }
             }
         });

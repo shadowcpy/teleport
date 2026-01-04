@@ -1,18 +1,18 @@
+import 'dart:async';
 import 'dart:io';
-import 'dart:math';
-import 'package:flutter/material.dart';
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_common.dart';
-
-import 'package:teleport/src/rust/api/teleport.dart';
-import 'package:teleport/src/rust/frb_generated.dart';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:teleport/src/rust/lib.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
+
+import 'package:teleport/onboarding_page.dart';
+import 'package:teleport/pairing.dart';
+import 'package:teleport/src/rust/api/teleport.dart';
+import 'package:teleport/src/rust/frb_generated.dart';
+import 'package:teleport/send_page.dart';
+import 'package:teleport/incoming_pairing_sheet.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +25,7 @@ Future<void> main() async {
   final persistentDirectory = await getApplicationDocumentsDirectory();
   final tempDirectory = await getApplicationCacheDirectory();
 
-  var state = await AppState.init(
+  final state = await AppState.init(
     persistenceDir: persistentDirectory.path,
     tempDir: tempDirectory.path,
   );
@@ -39,7 +39,11 @@ class TeleportApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: HomePage(state: state));
+    return MaterialApp(
+      title: 'Teleport',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      home: HomePage(state: state),
+    );
   }
 }
 
@@ -52,275 +56,50 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
-  String? _result;
+  // State variables
   List<(String, String)> _peers = [];
-  String? _selectedPeer;
+  // String? _selectedPeer; // Moved to SendPage
   String? _pairingInfo;
   String? _targetDir;
+  // double? _uploadProgress; // Moved to SendPage
+  final Map<String, (BigInt, BigInt)> _downloadProgress =
+      {}; // Key: "$peer/$filename"
+  bool _isOnboarding = false;
+
+  // Stream Subscriptions for cleanup
+  StreamSubscription? _pairingSub;
+  StreamSubscription? _fileSub;
 
   @override
   void initState() {
     super.initState();
-    if (!Platform.isAndroid) {
-      trayManager.addListener(this); // tray events
-      windowManager.addListener(this); // window events
-      _initBG();
-    }
-    _initTeleport();
+    _initDesktopIntegration();
+    _initTeleportCore();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.send), text: "Send"),
-              Tab(icon: Icon(Icons.link), text: "Pair"),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            Column(
-              mainAxisAlignment: .center,
-              mainAxisSize: .max,
-              children: [
-                _peers.isEmpty
-                    ? Text("No paired peers.")
-                    : RadioGroup<String>(
-                        groupValue: _selectedPeer,
-                        onChanged: (String? value) {
-                          setState(() {
-                            _selectedPeer = value;
-                          });
-                        },
-                        child: Column(
-                          children: _peers
-                              .map((t) {
-                                return ListTile(
-                                  title: Text("${t.$1}: ${t.$2}"),
-                                  leading: Radio(value: t.$2),
-                                );
-                              })
-                              .cast<Widget>()
-                              .toList(),
-                        ),
-                      ),
-                SizedBox(height: 20),
-                FilledButton.tonalIcon(
-                  onPressed: _selectedPeer == null
-                      ? null
-                      : () async {
-                          FilePickerResult? result = await FilePicker.platform
-                              .pickFiles();
-                          if (result == null) {
-                            return;
-                          }
-                          var file = result.files.first;
-                          await widget.state.sendFile(
-                            peer: _selectedPeer!,
-                            name: file.name,
-                            path: file.path!,
-                          );
-                          setState(() {
-                            _result =
-                                "File \"${file.name}\" was successfully transferred";
-                          });
-                        },
-                  label: Text("Select"),
-                  icon: Icon(Icons.send),
-                ),
-                SizedBox(height: 20),
-                if (_result != null) SelectableText("$_result"),
-              ],
-            ),
-            Column(
-              mainAxisAlignment: .center,
-              mainAxisSize: .max,
-              children: [
-                if (_pairingInfo != null)
-                  SizedBox(
-                    height: 150,
-                    child: PrettyQrView.data(data: _pairingInfo!),
-                  ),
-                SizedBox(height: 20),
-                if (Platform.isAndroid)
-                  FilledButton.tonalIcon(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (BuildContext context) {
-                          bool didDetect = false;
-                          return MobileScanner(
-                            onDetect: (result) async {
-                              if (didDetect) {
-                                return;
-                              }
-                              didDetect = true;
-                              Navigator.pop(context);
-                              var info = result.barcodes.first.rawValue;
-                              if (info != null) {
-                                var random = Random();
-                                var numbers = Iterable.generate(6, (_) {
-                                  return random.nextInt(10);
-                                }).toList();
-                                BuildContext? cursedContext;
-                                showModalBottomSheet(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    cursedContext = context;
-                                    return SizedBox(
-                                      height: 100,
-                                      child: Center(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            CircularProgressIndicator(),
-                                            SizedBox(height: 10),
-                                            Text(
-                                              "Compare Code ${numbers.join()} on target device",
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                );
-                                await widget.state.pairWith(
-                                  info: info,
-                                  pairingCode: U8Array6(
-                                    Uint8List.fromList(numbers),
-                                  ),
-                                );
-                                var peers = await widget.state.peers();
-                                setState(() {
-                                  _peers = peers;
-                                  _result = "Successfully paired to device";
-                                });
-                                Navigator.pop(cursedContext!);
-                              }
-                            },
-                          );
-                        },
-                      );
-                    },
-                    icon: Icon(Icons.link),
-                    label: Text("Scan QR Code"),
-                  ),
-                SizedBox(height: 20),
-                if (_result != null) SelectableText("$_result"),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _initTeleport() async {
-    var peers = await widget.state.peers();
-    var pairingInfo = await widget.state.getAddr();
-    var targetDir = await widget.state.getTargetDir();
-
-    setState(() {
-      _peers = peers;
-      _pairingInfo = pairingInfo;
-      _targetDir = targetDir;
-    });
-
-    if (_targetDir == null) {
-      var target = await FilePicker.platform.getDirectoryPath(
-        dialogTitle: "Select a folder",
-      );
-      if (target != null && target != "/") {
-        await widget.state.setTargetDir(dir: target);
-        setState(() {
-          _targetDir = target;
-        });
-      }
+  void dispose() {
+    _pairingSub?.cancel();
+    _fileSub?.cancel();
+    if (!Platform.isAndroid) {
+      trayManager.removeListener(this);
+      windowManager.removeListener(this);
     }
-
-    widget.state.pairingSubscription().forEach((pair) {
-      showModalBottomSheet(
-        context: context,
-        builder: (BuildContext context) {
-          return SizedBox(
-            height: 200,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text("Incoming Pairing Request"),
-                SizedBox(height: 10),
-                Text("Device: ${pair.friendlyName}"),
-                SizedBox(height: 10),
-                Text("Code: ${pair.pairingCode.join()}"),
-                SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    FilledButton.tonal(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await pair.react(reaction: UIPairReaction.accept);
-                        pair
-                            .result()
-                            .onError((error, stackTrace) {
-                              setState(() {
-                                _result = "Pairing failed: ${error.toString()}";
-                              });
-                            })
-                            .then((_) async {
-                              var peers = await widget.state.peers();
-                              setState(() {
-                                _result = "Pairing succeeded!";
-                                _peers = peers;
-                              });
-                            });
-                      },
-                      child: Text("Accept"),
-                    ),
-                    FilledButton.tonal(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await pair.react(reaction: UIPairReaction.reject);
-                      },
-                      child: Text("Reject"),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    });
-
-    widget.state.fileSubscription().forEach((file) async {
-      if (_targetDir == null) {
-        return;
-      }
-      var tempFile = File(file.path);
-      var finalFile = await tempFile.copy("$_targetDir/${file.name}");
-      await tempFile.delete(recursive: false);
-      setState(() {
-        _result = "Saved file in ${finalFile.path} (from ${file.peer})";
-      });
-    });
+    super.dispose();
   }
 
-  Future<void> _initBG() async {
-    // Make the close button hide-to-tray instead of quitting:
-    await windowManager.setPreventClose(true); //
+  // --- Initialization Logic ---
 
-    // Tray icon + menu
+  Future<void> _initDesktopIntegration() async {
+    if (Platform.isAndroid) return;
+
+    trayManager.addListener(this);
+    windowManager.addListener(this);
+
+    await windowManager.setPreventClose(true);
     await trayManager.setIcon(
       Platform.isWindows ? 'images/tray_icon.ico' : 'images/tray_icon.png',
-    ); //
-
+    );
     await trayManager.setContextMenu(
       Menu(
         items: [
@@ -329,38 +108,239 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
           MenuItem(key: 'quit', label: 'Quit'),
         ],
       ),
-    ); //
+    );
   }
 
-  Future<void> _showWindow() async {
-    await windowManager.show();
-    await windowManager.focus();
+  Future<void> _initTeleportCore() async {
+    // 1. Initial Data Fetch
+    final peers = await widget.state.peers();
+    final pairingInfo = await widget.state.getAddr();
+    final targetDir = await widget.state.getTargetDir();
+
+    if (!mounted) return;
+
+    setState(() {
+      _peers = peers;
+      _pairingInfo = pairingInfo;
+      _targetDir = targetDir;
+    });
+
+    // 2. Onboarding Check
+    if (_targetDir == null) {
+      if (mounted) setState(() => _isOnboarding = true);
+    }
+
+    // 3. Subscribe to Pairing Requests
+    _pairingSub = widget.state.pairingSubscription().listen((pair) {
+      if (!mounted) return;
+      _showIncomingPairingRequest(pair);
+    });
+
+    // 4. Subscribe to Incoming Files
+    _fileSub = widget.state.fileSubscription().listen((event) async {
+      final key = "${event.peer}/${event.name}";
+
+      event.event.when(
+        progress: (offset, size) {
+          if (mounted) {
+            setState(() {
+              _downloadProgress[key] = (offset, size);
+            });
+          }
+        },
+        done: (path, name) async {
+          if (mounted) {
+            setState(() {
+              _downloadProgress.remove(key);
+            });
+          }
+
+          if (_targetDir == null) return;
+
+          try {
+            final tempFile = File(path);
+            final destPath = "$_targetDir/$name";
+            await tempFile.copy(destPath);
+            await tempFile.delete(); // Cleanup temp
+
+            if (mounted) {
+              _showSnackBar(
+                "Received: $name from ${event.name}",
+                isError: false,
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              _showSnackBar("Error saving $name: $e", isError: true);
+            }
+          }
+        },
+        error: (msg) {
+          if (mounted) {
+            setState(() {
+              _downloadProgress.remove(key);
+            });
+            _showSnackBar("Error receiving ${event.name}: $msg", isError: true);
+          }
+        },
+      );
+    });
   }
 
-  Future<void> _hideWindow() async {
-    await windowManager.hide();
-  }
+  Future<void> _selectTargetDirectory() async {
+    String? target = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: "Select download folder",
+    );
 
-  Future<void> _toggleWindow() async {
-    final visible = await windowManager.isVisible();
-    if (visible) {
-      await _hideWindow();
-    } else {
-      await _showWindow();
+    if (target != null && target != "/") {
+      await widget.state.setTargetDir(dir: target);
+      setState(() => _targetDir = target);
     }
   }
 
-  // Left-click tray icon: toggle window (or pop up menu if you prefer)
-  @override
-  void onTrayIconMouseDown() async {
-    await _toggleWindow();
+  // --- UI Action Handlers ---
+
+  void _showIncomingPairingRequest(InboundPair pair) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => IncomingPairingSheet(
+        pair: pair,
+        onRespond: (reaction) async {
+          Navigator.pop(ctx);
+          try {
+            await pair.react(reaction: reaction);
+
+            if (reaction == UIPairReaction.accept) {
+              final newPeers = await widget.state.peers();
+              if (mounted) {
+                setState(() => _peers = newPeers);
+                _showSnackBar("Device paired successfully");
+              }
+            } else if (reaction == UIPairReaction.wrongPairingCode) {
+              if (mounted) {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text("Pairing Failed"),
+                    content: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.no_encryption_gmailerrorred,
+                          color: Colors.red,
+                          size: 48,
+                        ),
+                        SizedBox(height: 16),
+                        Text("Wrong Pairing Code"),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text("OK"),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            if (mounted) {
+              _showSnackBar("Error during pairing: $e", isError: true);
+            }
+          }
+        },
+      ),
+    );
   }
 
-  // Right-click tray icon: show context menu
-  @override
-  void onTrayIconRightMouseDown() {
-    trayManager.popUpContextMenu(); //
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.redAccent : null,
+      ),
+    );
   }
+
+  // --- Build Method ---
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isOnboarding) {
+      return OnboardingPage(
+        state: widget.state,
+        onComplete: () async {
+          // Refresh state after onboarding
+          final newTarget = await widget.state.getTargetDir();
+          final newPeers = await widget.state.peers();
+          if (mounted) {
+            setState(() {
+              _isOnboarding = false;
+              _targetDir = newTarget;
+              _peers = newPeers;
+            });
+          }
+        },
+      );
+    }
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Teleport"),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.send), text: "Send"),
+              Tab(icon: Icon(Icons.link), text: "Pair"),
+            ],
+          ),
+          actions: [
+            if (_targetDir != null)
+              IconButton(
+                icon: const Icon(Icons.folder_open),
+                tooltip: _targetDir,
+                onPressed: _selectTargetDirectory,
+              ),
+          ],
+        ),
+        body: TabBarView(
+          children: [
+            SendPage(
+              state: widget.state,
+              peers: _peers,
+              downloadProgress: _downloadProgress,
+            ),
+            PairingTab(
+              state: widget.state,
+              pairingInfo: _pairingInfo,
+              onPeersUpdated: () async {
+                final newPeers = await widget.state.peers();
+                if (mounted) setState(() => _peers = newPeers);
+                _showSnackBar(
+                  "Successfully paired!",
+                ); // Move success message here or keep in dialog?
+                // In original code success snackbar was after process.
+                // PairingDialog handles success UI internally, but we might want snackbar too.
+                // Original: _showSnackBar("Successfully paired!", isError: false);
+                // I'll leave snackbar here for consistency.
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Tray & Window Listeners (Desktop) ---
+
+  @override
+  void onTrayIconMouseDown() => _toggleWindow();
+
+  @override
+  void onTrayIconRightMouseDown() => trayManager.popUpContextMenu();
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) async {
@@ -369,7 +349,6 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
         await _toggleWindow();
         break;
       case 'quit':
-        // allow close and quit
         await windowManager.setPreventClose(false);
         await trayManager.destroy();
         await windowManager.destroy();
@@ -377,21 +356,18 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
     }
   }
 
-  // Window close button => hide to tray
   @override
   void onWindowClose() async {
-    final prevent = await windowManager.isPreventClose(); //
-    if (prevent) {
-      await _hideWindow();
-    }
+    final prevent = await windowManager.isPreventClose();
+    if (prevent) await windowManager.hide();
   }
 
-  @override
-  void dispose() {
-    if (!Platform.isAndroid) {
-      trayManager.removeListener(this);
-      windowManager.removeListener(this);
+  Future<void> _toggleWindow() async {
+    if (await windowManager.isVisible()) {
+      await windowManager.hide();
+    } else {
+      await windowManager.show();
+      await windowManager.focus();
     }
-    super.dispose();
   }
 }

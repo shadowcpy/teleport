@@ -1,28 +1,35 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Result, bail};
 use iroh::{
     EndpointAddr, EndpointId,
     discovery::mdns::MdnsDiscoveryBuilder,
-    endpoint::{Builder, presets},
+    endpoint::{Builder, TransportConfig, presets},
     protocol::Router,
 };
 use iroh_blobs::{
-    BlobsProtocol, api::downloader::Downloader, store::mem::MemStore, ticket::BlobTicket,
+    BlobsProtocol,
+    api::downloader::{DownloadProgress, Downloader},
+    store::mem::MemStore,
+    ticket::BlobTicket,
 };
+use iroh_quinn_proto::{IdleTimeout, VarInt};
 use kameo::prelude::*;
 use tokio::spawn;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::{
-    api::teleport::{InboundFile, InboundPair, UIPairReaction, UIPromise, UIResolver},
+    api::teleport::{
+        InboundFileEvent, InboundFileStatus, InboundPair, OutboundFileStatus, PairingResponse,
+        UIPairReaction, UIPromise, UIResolver,
+    },
     config::{ConfigManager, Peer},
     frb_generated::{RustAutoOpaque, StreamSink},
     promise::{Promise, init_promise},
     protocol::{
         framed::FramedBiStream,
         pair::{self, MAX_SIZE, Pair, PairAcceptor},
-        send::{self, Offer, SendAcceptor},
+        send::{self, DownloadStatus, FileStatus, Offer, SendAcceptor},
     },
 };
 
@@ -30,10 +37,10 @@ pub struct Dispatcher {
     this: ActorRef<Dispatcher>,
     manager: ConfigManager,
     router: Arc<Router>,
-    store: MemStore,
+    store: Arc<MemStore>,
     temp_dir: PathBuf,
     downloader: Downloader,
-    file_subscription: Option<StreamSink<InboundFile>>,
+    file_subscription: Option<Arc<StreamSink<InboundFileEvent>>>,
     pairing_subscription: Option<StreamSink<InboundPair>>,
 }
 
@@ -49,9 +56,14 @@ impl Actor for Dispatcher {
     async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
         let DispatcherArgs { manager, temp_dir } = args;
 
+        let mut transport_config = TransportConfig::default();
+        transport_config.enable_segmentation_offload(false);
+        transport_config.max_idle_timeout(Some(VarInt::from_u32(5_000).into()));
+
         let endpoint = Builder::new(presets::N0)
             .discovery(MdnsDiscoveryBuilder::default())
             .secret_key(manager.key.clone())
+            .transport_config(transport_config)
             .bind()
             .await?;
 
@@ -78,6 +90,7 @@ impl Actor for Dispatcher {
             .spawn();
 
         let router = Arc::new(router);
+        let store = Arc::new(store);
 
         info!("EndpointID: {}", router.endpoint().id());
         info!("Router started");
@@ -108,9 +121,14 @@ impl Message<ActionRequest> for Dispatcher {
                 let result = self.pair_with(peer, pairing_code);
                 ActionResponse::PairWith(result)
             }
-            ActionRequest::SendFile { to, name, path } => {
-                let result = self.send_file(to, name, path).await;
-                ActionResponse::SendFile(result)
+            ActionRequest::SendFile {
+                to,
+                name,
+                path,
+                progress,
+            } => {
+                self.send_file(to, name, path, progress).await;
+                ActionResponse::Ack
             }
         }
     }
@@ -139,10 +157,12 @@ impl Message<BGRequest> for Dispatcher {
                 self.register_peer(peer).await;
                 BGResponse::Ack
             }
-            BGRequest::IncomingOffer(offer) => {
-                self.incoming_offer(offer, self.file_subscription.as_ref())
-                    .await
-                    .unwrap();
+            BGRequest::IncomingOffer { from, ticket } => {
+                let response = self.incoming_offer(ticket, from).unwrap();
+                BGResponse::IncomingOffer { download: response }
+            }
+            BGRequest::DownloadStatus(file_event) => {
+                self.download_status(file_event).await;
                 BGResponse::Ack
             }
         }
@@ -163,11 +183,16 @@ impl Message<UIRequest> for Dispatcher {
                 UIResponse::Ack
             }
             UIRequest::FileSubscription(sub) => {
-                self.file_subscription = Some(sub);
+                self.file_subscription = Some(Arc::new(sub));
                 UIResponse::Ack
             }
             UIRequest::SetTargetDir(path_buf) => {
                 self.manager.target_dir = Some(path_buf);
+                self.manager.save().await.unwrap();
+                UIResponse::Ack
+            }
+            UIRequest::SetDeviceName(name) => {
+                self.manager.name = name;
                 self.manager.save().await.unwrap();
                 UIResponse::Ack
             }
@@ -183,33 +208,144 @@ impl Message<UIRequest> for Dispatcher {
                 let peers = self.manager.peers.clone();
                 UIResponse::GetPeers(peers)
             }
+            UIRequest::GetDeviceName => {
+                let name = self.manager.name.clone();
+                UIResponse::GetDeviceName(name)
+            }
         }
     }
 }
 
 impl Dispatcher {
-    pub async fn send_file(&self, peer: EndpointId, name: String, path: PathBuf) -> Result<()> {
-        let tag = self.store.blobs().add_path(path).await?;
-        let endpoint_id = self.router.endpoint().id();
-        let ticket = BlobTicket::new(endpoint_id.into(), tag.hash, tag.format);
+    pub async fn send_file(
+        &self,
+        peer: EndpointId,
+        name: String,
+        path: PathBuf,
+        ui: StreamSink<OutboundFileStatus>,
+    ) {
+        let store = self.store.clone();
+        let router = self.router.clone();
 
-        let conn = self.router.endpoint().connect(peer, send::ALPN).await?;
-        let (mut send, _) = conn.open_bi().await?;
+        spawn(async move {
+            let action = async {
+                let tag = store.blobs().add_path(path).await?;
+                let observer = store.blobs().observe(tag.hash).await?;
+                let size = observer.size();
+                let endpoint_addr = router.endpoint().addr();
+                let ticket = BlobTicket::new(endpoint_addr, tag.hash, tag.format);
 
-        let offer = Offer {
-            name,
-            size: 10,
-            blob_ticket: ticket,
+                let conn = router.endpoint().connect(peer, send::ALPN).await?;
+                let (send, recv) = conn.open_bi().await?;
+                let mut framed = FramedBiStream::new((send, recv), send::MAX_SIZE);
+
+                let offer = Offer {
+                    name,
+                    size,
+                    blob_ticket: ticket,
+                };
+
+                send::SendRequest::Offer(offer).send(&mut framed).await?;
+
+                let response = send::SendResponse::recv(&mut framed).await?;
+
+                match response {
+                    send::SendResponse::Accept => {
+                        info!("Offer accepted by {peer}");
+                    }
+                    send::SendResponse::Reject => {
+                        bail!("Offer rejected by peer");
+                    }
+                    _ => bail!("Unexpected response: {response:?}"),
+                }
+
+                loop {
+                    let response = send::SendResponse::recv(&mut framed).await?;
+                    match response {
+                        send::SendResponse::Progress { val } => {
+                            ui.add(OutboundFileStatus::Progress {
+                                offset: val,
+                                size: observer.size(),
+                            })
+                            .unwrap();
+                        }
+                        send::SendResponse::Done => {
+                            info!("Transfer complete!");
+                            conn.close(0u32.into(), b"bye");
+                            break;
+                        }
+                        send::SendResponse::Error(e) => {
+                            bail!("Remote error: {e}");
+                        }
+                        _ => {}
+                    }
+                }
+
+                Ok(())
+            };
+            match action.await {
+                Ok(_) => {
+                    ui.add(OutboundFileStatus::Done).unwrap();
+                }
+                Err(e) => {
+                    warn!("Failed to send file to {peer}: {}", e);
+                    ui.add(OutboundFileStatus::Error(e.to_string())).unwrap();
+                }
+            }
+        });
+    }
+
+    pub async fn download_status(&self, file_event: DownloadStatus) {
+        let Some(ref ui) = self.file_subscription else {
+            return;
         };
-
-        let message = postcard::to_allocvec(&offer)?;
-
-        send.write_all(&message).await?;
-        send.finish()?;
-
-        conn.closed().await;
-
-        Ok(())
+        let remote_peer = self
+            .manager
+            .peers
+            .iter()
+            .find(|p| p.id == file_event.peer)
+            .unwrap();
+        match file_event.status {
+            FileStatus::Progress { offset, size } => {
+                ui.add(InboundFileEvent {
+                    peer: file_event.peer.to_string(),
+                    name: remote_peer.name.clone(),
+                    event: InboundFileStatus::Progress { offset, size },
+                })
+                .unwrap();
+            }
+            FileStatus::Done(offer) => {
+                let ticket = &offer.blob_ticket;
+                let path = self.temp_dir.join(ticket.hash().to_string());
+                if let Err(e) = self.store.blobs().export(ticket.hash(), &path).await {
+                    error!("Failed to export blob for offer {:?}: {}", offer, e);
+                    ui.add(InboundFileEvent {
+                        peer: file_event.peer.to_string(),
+                        name: remote_peer.name.clone(),
+                        event: InboundFileStatus::Error(e.to_string()),
+                    })
+                    .unwrap();
+                } else {
+                    ui.add(InboundFileEvent {
+                        peer: file_event.peer.to_string(),
+                        name: remote_peer.name.clone(),
+                        event: InboundFileStatus::Done {
+                            path: path.to_string_lossy().to_string(),
+                            name: offer.name.clone(),
+                        },
+                    })
+                    .unwrap();
+                }
+            }
+            FileStatus::Error(e) => {
+                ui.add(InboundFileEvent {
+                    peer: file_event.peer.to_string(),
+                    name: remote_peer.name.clone(),
+                    event: InboundFileStatus::Error(e),
+                })
+                .unwrap();
+            }
+        }
     }
 
     pub async fn incoming_pair_started(
@@ -219,7 +355,7 @@ impl Dispatcher {
         pairing_code: [u8; 6],
         outcome: Promise<Result<(), String>>,
     ) -> Promise<UIPairReaction> {
-        let (reaction_promise, reaction_resolver) = init_promise();
+        let (reaction_promise, reaction_resolver) = init_promise::<UIPairReaction>();
 
         if let Some(ref ui) = self.pairing_subscription {
             if self.manager.peers.iter().any(|p| p.id == from) {
@@ -246,42 +382,38 @@ impl Dispatcher {
         self.manager.save().await.unwrap();
     }
 
-    pub async fn incoming_offer(
+    pub fn incoming_offer(
         &self,
-        offer: Offer,
-        sub: Option<&StreamSink<InboundFile>>,
-    ) -> Result<()> {
-        let ticket = offer.blob_ticket;
-        self.downloader
-            .download(ticket.hash(), Some(ticket.addr().id))
-            .await?;
-        let path = self.temp_dir.join(ticket.hash().to_string());
-        self.store.blobs().export(ticket.hash(), &path).await?;
-        if let Some(ui) = sub {
-            ui.add(InboundFile {
-                peer: ticket.addr().id.to_string(),
-                name: offer.name,
-                size: offer.size,
-                path: path.to_string_lossy().to_string(),
-            })
-            .unwrap();
+        ticket: BlobTicket,
+        from: EndpointId,
+    ) -> Result<Option<DownloadProgress>> {
+        // Peer Verification
+        let is_known = self.manager.peers.iter().any(|p| p.id == from);
+        if !is_known {
+            warn!("Rejecting offer from unknown peer: {from}");
+            return Ok(None);
         }
-        Ok(())
+
+        let download_fut = self
+            .downloader
+            .download(ticket.hash(), Some(ticket.addr().id));
+
+        Ok(Some(download_fut))
     }
 
-    pub fn pair_with(&self, addr: EndpointAddr, code: [u8; 6]) -> Promise<Result<()>> {
+    pub fn pair_with(&self, addr: EndpointAddr, code: [u8; 6]) -> Promise<PairingResponse> {
         let id = addr.id;
         let name = self.manager.name.clone();
         let router = self.router.clone();
         let dispatcher = self.this.clone();
         let already_paired = self.manager.peers.iter().any(|p| p.id == addr.id);
 
-        let (promise, resolver) = init_promise();
+        let (promise, resolver) = init_promise::<PairingResponse>();
 
         spawn(async move {
             if already_paired {
                 warn!("Already paired to {id}, ignoring");
-                resolver.emit(Ok(()));
+                resolver.emit(PairingResponse::Success);
                 return;
             }
 
@@ -311,16 +443,16 @@ impl Dispatcher {
                     }
                     Pair::NiceToMeetYou { friendly_name } => friendly_name,
                     Pair::WrongPairingCode => {
-                        bail!("Wrong pairing code");
+                        return Ok(None);
                     }
                     _ => bail!("Invalid msg type"),
                 };
 
-                Ok(name)
+                Ok(Some(name))
             };
 
             match action.await {
-                Ok(peer_name) => {
+                Ok(Some(peer_name)) => {
                     info!("Paired with {peer_name} ({id})");
                     dispatcher
                         .tell(BGRequest::RegisterPeer(Peer {
@@ -329,11 +461,14 @@ impl Dispatcher {
                         }))
                         .await
                         .unwrap();
-                    resolver.emit(Ok(()));
+                    resolver.emit(PairingResponse::Success);
+                }
+                Ok(None) => {
+                    resolver.emit(PairingResponse::WrongCode);
                 }
                 Err(e) => {
                     warn!("Failed to pair with {id}: {}", e);
-                    resolver.emit(Err(e));
+                    resolver.emit(PairingResponse::Error(e.to_string()));
                 }
             }
         });
@@ -341,6 +476,11 @@ impl Dispatcher {
         promise
     }
 }
+
+// Temporary internal enum to help with the match logic, or I can just change the async block return type.
+// Actually, `action` returns `Result<PairingResponseInternal>` or similar.
+// Let's redefine `action` return type slightly.
+
 pub enum ActionRequest {
     PairWith {
         peer: EndpointAddr,
@@ -350,6 +490,7 @@ pub enum ActionRequest {
         to: EndpointId,
         name: String,
         path: PathBuf,
+        progress: StreamSink<OutboundFileStatus>,
     },
 }
 
@@ -361,16 +502,22 @@ pub enum BGRequest {
         outcome: Promise<Result<(), String>>,
     },
     RegisterPeer(Peer),
-    IncomingOffer(Offer),
+    IncomingOffer {
+        ticket: BlobTicket,
+        from: EndpointId,
+    },
+    DownloadStatus(DownloadStatus),
 }
 
 pub enum UIRequest {
     PairingSubscription(StreamSink<InboundPair>),
-    FileSubscription(StreamSink<InboundFile>),
+    FileSubscription(StreamSink<InboundFileEvent>),
     GetTargetDir,
     SetTargetDir(PathBuf),
     GetLocalAddr,
     GetPeers,
+    SetDeviceName(String),
+    GetDeviceName,
 }
 
 #[derive(Reply)]
@@ -378,6 +525,7 @@ pub enum UIResponse {
     GetLocalAddr(EndpointAddr),
     GetPeers(Vec<Peer>),
     GetTargetDir(Option<PathBuf>),
+    GetDeviceName(String),
     Ack,
 }
 
@@ -387,12 +535,14 @@ pub enum BGResponse {
         reaction: Promise<UIPairReaction>,
         our_name: String,
     },
+    IncomingOffer {
+        download: Option<DownloadProgress>,
+    },
     Ack,
 }
 
 #[derive(Reply)]
 pub enum ActionResponse {
-    PairWith(Promise<Result<()>>),
-    SendFile(Result<()>),
+    PairWith(Promise<PairingResponse>),
     Ack,
 }
