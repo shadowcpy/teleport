@@ -146,20 +146,26 @@ class _PairingTabState extends State<PairingTab> {
           ),
         );
 
+        final content = Column(
+          children: [
+            isWide
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: qrCard),
+                      const SizedBox(width: 16),
+                      Expanded(child: scanCard),
+                    ],
+                  )
+                : Column(
+                    children: [qrCard, const SizedBox(height: 16), scanCard],
+                  ),
+          ],
+        );
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(12),
-          child: isWide
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: qrCard),
-                    const SizedBox(width: 16),
-                    Expanded(child: scanCard),
-                  ],
-                )
-              : Column(
-                  children: [qrCard, const SizedBox(height: 16), scanCard],
-                ),
+          child: content,
         );
       },
     );

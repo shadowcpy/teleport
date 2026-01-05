@@ -106,11 +106,15 @@ class TeleportStore extends ChangeNotifier {
 
   // --- Handling Events ---
 
-  void _handlePairingRequest(InboundPair pair) {
+  Future<void> _handlePairingRequest(InboundPair pair) async {
     // We will expose a stream or callback for UI to handle this interactive event
     // Ideally, we use a global event bus or a ValueNotifier for "current dialog"
     // For now, let's expose specific streams for UI events that need user interaction
     _pairingRequestController.add(pair);
+    try {
+      _pairingInfo = await state.getAddr();
+      notifyListeners();
+    } catch (_) {}
   }
 
   final StreamController<InboundPair> _pairingRequestController =

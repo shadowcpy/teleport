@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/features/pairing/pairing_page.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
@@ -189,6 +190,21 @@ class _SendPageState extends State<SendPage> {
     }
   }
 
+  String _shortPeerId(String peer) {
+    const maxLen = 12;
+    if (peer.length <= maxLen) return peer;
+    return peer.substring(0, maxLen);
+  }
+
+  TextStyle? _peerIdStyle(BuildContext context) {
+    final base = Theme.of(context).textTheme.bodySmall?.copyWith(
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5,
+    );
+    if (base == null) return null;
+    return GoogleFonts.jetBrainsMono(textStyle: base);
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = TeleportScope.of(context);
@@ -272,14 +288,15 @@ class _SendPageState extends State<SendPage> {
                         children: [
                           Text(
                             selectedLabel ?? "No device selected",
-                            style: Theme.of(context).textTheme.titleSmall,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             _selectedPeer == null
                                 ? "Choose a device below to send a file"
-                                : _selectedPeer!,
-                            style: Theme.of(context).textTheme.bodySmall,
+                                : _shortPeerId(_selectedPeer!),
+                            style: _peerIdStyle(context),
                           ),
                         ],
                       ),
@@ -307,12 +324,16 @@ class _SendPageState extends State<SendPage> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            TextButton.icon(
+            OutlinedButton.icon(
               onPressed: () {
                 Navigator.of(
                   context,
                 ).push(MaterialPageRoute(builder: (_) => const PairingPage()));
               },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                side: BorderSide(color: Theme.of(context).colorScheme.primary),
+              ),
               icon: const Icon(Icons.link),
               label: const Text("Pair new"),
             ),
@@ -353,12 +374,13 @@ class _SendPageState extends State<SendPage> {
                           children: [
                             Text(
                               peer.$1,
-                              style: Theme.of(context).textTheme.titleSmall,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              peer.$2,
-                              style: Theme.of(context).textTheme.bodySmall,
+                              _shortPeerId(peer.$2),
+                              style: _peerIdStyle(context),
                             ),
                           ],
                         ),

@@ -30,13 +30,20 @@ class _SettingsPageState extends State<SettingsPage>
       parent: _animController,
       curve: Curves.easeOut,
     );
-    _loadSettings();
   }
 
   @override
   void dispose() {
     _animController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isLoading) {
+      _loadSettings();
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -192,37 +199,16 @@ class _SettingsPageState extends State<SettingsPage>
                       ],
                     ),
                     const SizedBox(height: 16),
-                    _buildSection(
-                      title: 'About',
-                      icon: Icons.info_outline,
-                      children: [
-                        _buildSettingTile(
-                          icon: Icons.apps,
-                          title: 'Version',
-                          subtitle: '1.0.0',
-                          onTap: null,
-                        ),
-                        _buildSettingTile(
-                          icon: Icons.security,
-                          title: 'Privacy & Security',
-                          subtitle: 'End-to-end encrypted transfers',
-                          onTap: () => _showPrivacyInfo(),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 28),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        'Teleport uses peer-to-peer connections with QUIC encryption for secure, fast file transfers.',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.6),
-                            ),
+                        'Version 1.0.0',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -269,7 +255,9 @@ class _SettingsPageState extends State<SettingsPage>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.2),
             ),
           ),
           child: Column(children: children),
@@ -286,14 +274,10 @@ class _SettingsPageState extends State<SettingsPage>
     Widget? trailing,
   }) {
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).colorScheme.primaryContainer.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(8),
-        ),
+      leading: CircleAvatar(
+        backgroundColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.12),
         child: Icon(
           icon,
           size: 20,
@@ -306,10 +290,8 @@ class _SettingsPageState extends State<SettingsPage>
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(
-                    alpha: 0.6,
-                  ),
-            ),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
       ),
       trailing:
           trailing ??
@@ -318,113 +300,6 @@ class _SettingsPageState extends State<SettingsPage>
               : null),
       onTap: onTap,
       enabled: onTap != null,
-    );
-  }
-
-  void _showPrivacyInfo() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.security, color: Colors.green),
-            SizedBox(width: 12),
-            Text('Privacy & Security'),
-          ],
-        ),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Your privacy is our priority',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              SizedBox(height: 16),
-              _SecurityFeature(
-                icon: Icons.lock,
-                title: 'End-to-End Encryption',
-                description:
-                    'All file transfers are encrypted with QUIC/TLS 1.3',
-              ),
-              SizedBox(height: 12),
-              _SecurityFeature(
-                icon: Icons.cloud_off,
-                title: 'No Cloud Storage',
-                description:
-                    'Files are transferred directly between devices. Nothing is stored on our servers.',
-              ),
-              SizedBox(height: 12),
-              _SecurityFeature(
-                icon: Icons.verified_user,
-                title: 'Verified Pairing',
-                description:
-                    'Two-factor pairing with QR code and 6-digit verification code',
-              ),
-              SizedBox(height: 12),
-              _SecurityFeature(
-                icon: Icons.vpn_lock,
-                title: 'NAT Traversal',
-                description:
-                    'Direct peer-to-peer connections with automatic NAT traversal',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SecurityFeature extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-
-  const _SecurityFeature({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: Colors.green.shade700),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_sharing_intent/flutter_sharing_intent.dart';
 import 'package:flutter_sharing_intent/model/sharing_file.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/core/widgets/teleport_background.dart';
 import 'package:teleport/features/onboarding/onboarding_page.dart';
@@ -28,6 +30,9 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription? _pairingRequestSub;
   StreamSubscription? _notificationSub;
   StreamSubscription? _sharingSub;
+  static const MethodChannel _platform = MethodChannel(
+    'com.example.teleport/app',
+  );
 
   @override
   void initState() {
@@ -60,9 +65,9 @@ class _HomePageState extends State<HomePage> {
     if (!Platform.isAndroid) return;
     // Sharing intent listener
     FlutterSharingIntent.instance.getMediaStream().listen(
-      (List<SharedFile> value) {
+      (List<SharedFile> value) async {
         if (value.isNotEmpty && mounted) {
-          _handleSharedFiles(value.map((f) => f.value!).toList());
+          await _handleSharedFiles(value);
         }
       },
       onError: (err) {
@@ -72,9 +77,9 @@ class _HomePageState extends State<HomePage> {
 
     FlutterSharingIntent.instance.getInitialSharing().then((
       List<SharedFile> value,
-    ) {
+    ) async {
       if (value.isNotEmpty && mounted) {
-        _handleSharedFiles(value.map((f) => f.value!).toList());
+        await _handleSharedFiles(value);
       }
     });
   }
@@ -87,8 +92,13 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _handleSharedFiles(List<String> files) {
+  Future<void> _handleSharedFiles(List<SharedFile> files) async {
     if (files.isEmpty) return;
+    final resolved = await _resolveSharedFiles(files);
+    if (resolved.isEmpty) {
+      _showSnackBar("Unable to access shared files", isError: true);
+      return;
+    }
     final store = TeleportScope.of(context);
 
     showModalBottomSheet(
@@ -96,12 +106,50 @@ class _HomePageState extends State<HomePage> {
       isScrollControlled: true,
       builder: (ctx) => SharedPeerSheet(
         store: store,
-        files: files,
+        files: resolved,
         onSent: () {
           // Callback
         },
       ),
     );
+  }
+
+  Future<List<String>> _resolveSharedFiles(List<SharedFile> files) async {
+    final resolved = <String>[];
+    for (final file in files) {
+      final value = file.value ?? file.message;
+      if (value == null || value.isEmpty) {
+        continue;
+      }
+      if (file.type == SharedMediaType.TEXT ||
+          file.type == SharedMediaType.URL ||
+          file.type == SharedMediaType.WEB_SEARCH ||
+          (file.mimeType?.startsWith("text/") ?? false)) {
+        final tempDir = await getApplicationCacheDirectory();
+        final fileName =
+            "shared_text_${DateTime.now().microsecondsSinceEpoch}.txt";
+        final tempFile = File("${tempDir.path}/$fileName");
+        await tempFile.writeAsString(value);
+        resolved.add(tempFile.path);
+        continue;
+      }
+      if (value.startsWith("content://")) {
+        try {
+          final copied = await _platform.invokeMethod<String>(
+            "copySharedFile",
+            {"uri": value},
+          );
+          if (copied != null && copied.isNotEmpty) {
+            resolved.add(copied);
+          }
+        } catch (e) {
+          debugPrint("Failed to copy shared file: $e");
+        }
+      } else {
+        resolved.add(value);
+      }
+    }
+    return resolved;
   }
 
   void _showIncomingPairingRequest(InboundPair pair, TeleportStore store) {
@@ -165,13 +213,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _selectTargetDirectory(TeleportStore store) async {
-    String? target = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: "Select download folder",
-    );
-
-    if (target != null && target != "/") {
-      await store.setTargetDir(target);
+  Future<void> _openTargetDirectory(TeleportStore store) async {
+    final target = store.targetDir;
+    if (target == null || target == "/") return;
+    final exists = await Directory(target).exists();
+    if (!exists) {
+      _showSnackBar("Download folder not found", isError: true);
+      return;
+    }
+    final result = await OpenFilex.open(target);
+    if (result.type != ResultType.done) {
+      _showSnackBar("Unable to open download folder", isError: true);
     }
   }
 
@@ -235,7 +287,7 @@ class _HomePageState extends State<HomePage> {
             IconButton(
               icon: const Icon(Icons.folder_open),
               tooltip: store.targetDir,
-              onPressed: () => _selectTargetDirectory(store),
+              onPressed: () => _openTargetDirectory(store),
             ),
         ],
       ),
