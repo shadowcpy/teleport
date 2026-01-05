@@ -3,15 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_sharing_intent/flutter_sharing_intent.dart';
-import 'package:flutter_sharing_intent/model/sharing_file.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:teleport/core/services/sharing_sink.dart';
 import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/core/widgets/teleport_background.dart';
 import 'package:teleport/features/onboarding/onboarding_page.dart';
 import 'package:teleport/features/pairing/incoming_pairing_sheet.dart';
-import 'package:teleport/features/pairing/pairing_page.dart';
 import 'package:teleport/features/pairing/pairing_tab.dart';
 import 'package:teleport/features/send/send_page.dart';
 import 'package:teleport/features/settings/settings_page.dart';
@@ -63,23 +61,20 @@ class _HomePageState extends State<HomePage> {
 
   void _initSharing() {
     if (!Platform.isAndroid) return;
-    // Sharing intent listener
-    FlutterSharingIntent.instance.getMediaStream().listen(
-      (List<SharedFile> value) async {
-        if (value.isNotEmpty && mounted) {
-          await _handleSharedFiles(value);
+    _sharingSub = SharingSink.instance.stream.listen(
+      (items) async {
+        if (items.isNotEmpty && mounted) {
+          await _handleSharedFiles(items);
         }
       },
       onError: (err) {
-        debugPrint("getIntentDataStream error: $err");
+        debugPrint("sharing_sink stream error: $err");
       },
     );
 
-    FlutterSharingIntent.instance.getInitialSharing().then((
-      List<SharedFile> value,
-    ) async {
-      if (value.isNotEmpty && mounted) {
-        await _handleSharedFiles(value);
+    SharingSink.instance.getInitialSharing().then((items) async {
+      if (items.isNotEmpty && mounted) {
+        await _handleSharedFiles(items);
       }
     });
   }
@@ -92,7 +87,7 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> _handleSharedFiles(List<SharedFile> files) async {
+  Future<void> _handleSharedFiles(List<SharingItem> files) async {
     if (files.isEmpty) return;
     final resolved = await _resolveSharedFiles(files);
     if (resolved.isEmpty) {
@@ -114,39 +109,44 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<List<String>> _resolveSharedFiles(List<SharedFile> files) async {
-    final resolved = <String>[];
+  Future<List<SharedTransfer>> _resolveSharedFiles(
+    List<SharingItem> files,
+  ) async {
+    final resolved = <SharedTransfer>[];
     for (final file in files) {
-      final value = file.value ?? file.message;
-      if (value == null || value.isEmpty) {
+      final value = file.value;
+      if (value.isEmpty) {
         continue;
       }
-      if (file.type == SharedMediaType.TEXT ||
-          file.type == SharedMediaType.URL ||
-          file.type == SharedMediaType.WEB_SEARCH ||
+      if (file.type == SharingItemType.text ||
+          file.type == SharingItemType.url ||
+          file.type == SharingItemType.webSearch ||
           (file.mimeType?.startsWith("text/") ?? false)) {
         final tempDir = await getApplicationCacheDirectory();
-        final fileName =
-            "shared_text_${DateTime.now().microsecondsSinceEpoch}.txt";
-        final tempFile = File("${tempDir.path}/$fileName");
+        final name = "shared_text_${DateTime.now().microsecondsSinceEpoch}.txt";
+        final tempFile = File("${tempDir.path}/$name");
         await tempFile.writeAsString(value);
-        resolved.add(tempFile.path);
+        resolved.add(SharedTransfer(name: name, path: tempFile.path));
         continue;
       }
       if (value.startsWith("content://")) {
         try {
-          final copied = await _platform.invokeMethod<String>(
-            "copySharedFile",
+          final result = await _platform.invokeMethod<Map<dynamic, dynamic>>(
+            "openSharedFd",
             {"uri": value},
           );
-          if (copied != null && copied.isNotEmpty) {
-            resolved.add(copied);
+          final fd = result?["fd"] as int?;
+          final name = result?["name"] as String?;
+          if (fd != null) {
+            resolved.add(SharedTransfer(name: name ?? "shared_file", fd: fd));
+            continue;
           }
         } catch (e) {
-          debugPrint("Failed to copy shared file: $e");
+          debugPrint("Failed to open shared fd: $e");
         }
       } else {
-        resolved.add(value);
+        final name = value.split('/').last;
+        resolved.add(SharedTransfer(name: name, path: value));
       }
     }
     return resolved;
@@ -264,16 +264,6 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         actions: [
-          if (hasPeers)
-            IconButton(
-              icon: const Icon(Icons.link),
-              tooltip: "Pair device",
-              onPressed: () {
-                Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => const PairingPage()));
-              },
-            ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: "Settings",

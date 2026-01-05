@@ -1045,4 +1045,296 @@ as String,
 
 }
 
+/// @nodoc
+mixin _$SendFileSource {
+
+ Object get field0;
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendFileSource&&const DeepCollectionEquality().equals(other.field0, field0));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(field0));
+
+@override
+String toString() {
+  return 'SendFileSource(field0: $field0)';
+}
+
+
+}
+
+/// @nodoc
+class $SendFileSourceCopyWith<$Res>  {
+$SendFileSourceCopyWith(SendFileSource _, $Res Function(SendFileSource) __);
+}
+
+
+/// Adds pattern-matching-related methods to [SendFileSource].
+extension SendFileSourcePatterns on SendFileSource {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( SendFileSource_Path value)?  path,TResult Function( SendFileSource_Fd value)?  fd,required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case SendFileSource_Path() when path != null:
+return path(_that);case SendFileSource_Fd() when fd != null:
+return fd(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( SendFileSource_Path value)  path,required TResult Function( SendFileSource_Fd value)  fd,}){
+final _that = this;
+switch (_that) {
+case SendFileSource_Path():
+return path(_that);case SendFileSource_Fd():
+return fd(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( SendFileSource_Path value)?  path,TResult? Function( SendFileSource_Fd value)?  fd,}){
+final _that = this;
+switch (_that) {
+case SendFileSource_Path() when path != null:
+return path(_that);case SendFileSource_Fd() when fd != null:
+return fd(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String field0)?  path,TResult Function( int field0)?  fd,required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case SendFileSource_Path() when path != null:
+return path(_that.field0);case SendFileSource_Fd() when fd != null:
+return fd(_that.field0);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String field0)  path,required TResult Function( int field0)  fd,}) {final _that = this;
+switch (_that) {
+case SendFileSource_Path():
+return path(_that.field0);case SendFileSource_Fd():
+return fd(_that.field0);}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String field0)?  path,TResult? Function( int field0)?  fd,}) {final _that = this;
+switch (_that) {
+case SendFileSource_Path() when path != null:
+return path(_that.field0);case SendFileSource_Fd() when fd != null:
+return fd(_that.field0);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class SendFileSource_Path extends SendFileSource {
+  const SendFileSource_Path(this.field0): super._();
+  
+
+@override final  String field0;
+
+/// Create a copy of SendFileSource
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SendFileSource_PathCopyWith<SendFileSource_Path> get copyWith => _$SendFileSource_PathCopyWithImpl<SendFileSource_Path>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendFileSource_Path&&(identical(other.field0, field0) || other.field0 == field0));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,field0);
+
+@override
+String toString() {
+  return 'SendFileSource.path(field0: $field0)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SendFileSource_PathCopyWith<$Res> implements $SendFileSourceCopyWith<$Res> {
+  factory $SendFileSource_PathCopyWith(SendFileSource_Path value, $Res Function(SendFileSource_Path) _then) = _$SendFileSource_PathCopyWithImpl;
+@useResult
+$Res call({
+ String field0
+});
+
+
+
+
+}
+/// @nodoc
+class _$SendFileSource_PathCopyWithImpl<$Res>
+    implements $SendFileSource_PathCopyWith<$Res> {
+  _$SendFileSource_PathCopyWithImpl(this._self, this._then);
+
+  final SendFileSource_Path _self;
+  final $Res Function(SendFileSource_Path) _then;
+
+/// Create a copy of SendFileSource
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
+  return _then(SendFileSource_Path(
+null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class SendFileSource_Fd extends SendFileSource {
+  const SendFileSource_Fd(this.field0): super._();
+  
+
+@override final  int field0;
+
+/// Create a copy of SendFileSource
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SendFileSource_FdCopyWith<SendFileSource_Fd> get copyWith => _$SendFileSource_FdCopyWithImpl<SendFileSource_Fd>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendFileSource_Fd&&(identical(other.field0, field0) || other.field0 == field0));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,field0);
+
+@override
+String toString() {
+  return 'SendFileSource.fd(field0: $field0)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SendFileSource_FdCopyWith<$Res> implements $SendFileSourceCopyWith<$Res> {
+  factory $SendFileSource_FdCopyWith(SendFileSource_Fd value, $Res Function(SendFileSource_Fd) _then) = _$SendFileSource_FdCopyWithImpl;
+@useResult
+$Res call({
+ int field0
+});
+
+
+
+
+}
+/// @nodoc
+class _$SendFileSource_FdCopyWithImpl<$Res>
+    implements $SendFileSource_FdCopyWith<$Res> {
+  _$SendFileSource_FdCopyWithImpl(this._self, this._then);
+
+  final SendFileSource_Fd _self;
+  final $Res Function(SendFileSource_Fd) _then;
+
+/// Create a copy of SendFileSource
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? field0 = null,}) {
+  return _then(SendFileSource_Fd(
+null == field0 ? _self.field0 : field0 // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
 // dart format on

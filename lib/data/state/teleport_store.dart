@@ -228,6 +228,22 @@ class TeleportStore extends ChangeNotifier {
     void Function()? onDone,
     void Function(String)? onError,
   }) async {
+    return sendFileWithSource(
+      peer: peer,
+      name: name,
+      source: SendFileSource.path(path),
+      onDone: onDone,
+      onError: onError,
+    );
+  }
+
+  Future<void> sendFileWithSource({
+    required String peer,
+    required String name,
+    required SendFileSource source,
+    void Function()? onDone,
+    void Function(String)? onError,
+  }) async {
     final id = _transferId(peer, name);
     _uploadProgress[id] = TransferProgress(peer: peer, name: name);
     notifyListeners();
@@ -235,8 +251,8 @@ class TeleportStore extends ChangeNotifier {
     await FileSender.sendFile(
       state: state,
       peer: peer,
-      path: path,
       name: name,
+      source: source,
       onProgress: (_, offset, size) {
         final current = _uploadProgress[id];
         if (current == null) return;

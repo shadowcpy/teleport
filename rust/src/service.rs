@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, os::unix::io::FromRawFd, path::PathBuf, sync::Arc};
 
 use anyhow::{Result, bail};
 use flutter_rust_bridge::JoinHandle;
@@ -23,7 +23,8 @@ use tracing::{info, warn};
 use crate::{
     api::teleport::{
         InboundFileEvent, InboundFileStatus, InboundPair, OutboundFileStatus, PairingResponse,
-        UIConnectionQuality, UIConnectionQualityUpdate, UIPairReaction, UIPromise, UIResolver,
+        SendFileSource, UIConnectionQuality, UIConnectionQualityUpdate, UIPairReaction, UIPromise,
+        UIResolver,
     },
     config::{ConfigManager, Peer},
     frb_generated::{RustAutoOpaque, StreamSink},
@@ -127,10 +128,10 @@ impl Message<ActionRequest> for Dispatcher {
             ActionRequest::SendFile {
                 to,
                 name,
-                path,
+                source,
                 progress,
             } => {
-                self.send_file(to, name, path, progress).await;
+                self.send_file_with_source(to, name, source, progress).await;
                 ActionResponse::Ack
             }
         }
@@ -269,11 +270,11 @@ impl Message<UIRequest> for Dispatcher {
 }
 
 impl Dispatcher {
-    pub async fn send_file(
+    pub async fn send_file_with_source(
         &self,
         peer: EndpointId,
         name: String,
-        path: PathBuf,
+        source: SendFileSource,
         ui: StreamSink<OutboundFileStatus>,
     ) {
         let router = self.router.clone();
@@ -281,9 +282,19 @@ impl Dispatcher {
 
         spawn(async move {
             let action = async {
-                let file = File::open(&path).await?;
-                let metadata = file.metadata().await?;
-                let size = metadata.len();
+                let (file, size) = match source {
+                    SendFileSource::Path(path) => {
+                        let file = File::open(PathBuf::from(path)).await?;
+                        let metadata = file.metadata().await?;
+                        (file, metadata.len())
+                    }
+                    SendFileSource::Fd(fd) => {
+                        let std_file = unsafe { std::fs::File::from_raw_fd(fd) };
+                        let file = File::from_std(std_file);
+                        let metadata = file.metadata().await?;
+                        (file, metadata.len())
+                    }
+                };
 
                 let mut reader = BufReader::new(file);
 
@@ -579,7 +590,7 @@ pub enum ActionRequest {
     SendFile {
         to: EndpointId,
         name: String,
-        path: PathBuf,
+        source: SendFileSource,
         progress: StreamSink<OutboundFileStatus>,
     },
 }

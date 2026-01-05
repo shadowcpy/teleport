@@ -47,7 +47,7 @@ abstract class AppState implements RustOpaqueInterface {
   Stream<OutboundFileStatus> sendFile({
     required String peer,
     required String name,
-    required String path,
+    required SendFileSource source,
   });
 
   Future<void> setDeviceName({required String name});
@@ -161,6 +161,14 @@ sealed class PairingResponse with _$PairingResponse {
   const factory PairingResponse.wrongCode() = PairingResponse_WrongCode;
   const factory PairingResponse.wrongSecret() = PairingResponse_WrongSecret;
   const factory PairingResponse.error(String field0) = PairingResponse_Error;
+}
+
+@freezed
+sealed class SendFileSource with _$SendFileSource {
+  const SendFileSource._();
+
+  const factory SendFileSource.path(String field0) = SendFileSource_Path;
+  const factory SendFileSource.fd(int field0) = SendFileSource_Fd;
 }
 
 enum UIConnectionQuality { direct, mixed, relay, none }

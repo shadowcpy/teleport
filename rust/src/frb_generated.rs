@@ -28,7 +28,7 @@
 use crate::api::teleport::*;
 use crate::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
-use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
+use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
 
 // Section: boilerplate
@@ -590,7 +590,7 @@ fn wire__crate__api__teleport__AppState_send_file_impl(
             >>::sse_decode(&mut deserializer);
             let api_peer = <String>::sse_decode(&mut deserializer);
             let api_name = <String>::sse_decode(&mut deserializer);
-            let api_path = <String>::sse_decode(&mut deserializer);
+            let api_source = <crate::api::teleport::SendFileSource>::sse_decode(&mut deserializer);
             let api_progress = <StreamSink<
                 crate::api::teleport::OutboundFileStatus,
                 flutter_rust_bridge::for_generated::SseCodec,
@@ -620,7 +620,7 @@ fn wire__crate__api__teleport__AppState_send_file_impl(
                             &*api_that_guard,
                             api_peer,
                             api_name,
-                            api_path,
+                            api_source,
                             api_progress,
                         )
                         .await?;
@@ -1212,6 +1212,26 @@ impl SseDecode for (String, String) {
     }
 }
 
+impl SseDecode for crate::api::teleport::SendFileSource {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <String>::sse_decode(deserializer);
+                return crate::api::teleport::SendFileSource::Path(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <i32>::sse_decode(deserializer);
+                return crate::api::teleport::SendFileSource::Fd(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
 impl SseDecode for u64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1529,6 +1549,33 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::PairingResponse>
     for crate::api::teleport::PairingResponse
 {
     fn into_into_dart(self) -> crate::api::teleport::PairingResponse {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::teleport::SendFileSource {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            crate::api::teleport::SendFileSource::Path(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::teleport::SendFileSource::Fd(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::teleport::SendFileSource
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::SendFileSource>
+    for crate::api::teleport::SendFileSource
+{
+    fn into_into_dart(self) -> crate::api::teleport::SendFileSource {
         self
     }
 }
@@ -1864,6 +1911,25 @@ impl SseEncode for (String, String) {
     }
 }
 
+impl SseEncode for crate::api::teleport::SendFileSource {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::api::teleport::SendFileSource::Path(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <String>::sse_encode(field0, serializer);
+            }
+            crate::api::teleport::SendFileSource::Fd(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <i32>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+
 impl SseEncode for u64 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1969,7 +2035,7 @@ mod io {
     use flutter_rust_bridge::for_generated::byteorder::{
         NativeEndian, ReadBytesExt, WriteBytesExt,
     };
-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
+    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
 
     // Section: boilerplate
@@ -2041,7 +2107,7 @@ mod web {
     };
     use flutter_rust_bridge::for_generated::wasm_bindgen;
     use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
-    use flutter_rust_bridge::for_generated::{transform_result_dco, Lifetimeable, Lockable};
+    use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
     use flutter_rust_bridge::{Handler, IntoIntoDart};
 
     // Section: boilerplate

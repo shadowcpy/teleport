@@ -7,14 +7,14 @@ class FileSender {
   static Future<void> sendFile({
     required AppState state,
     required String peer,
-    required String path,
     required String name,
+    required SendFileSource source,
     Function(double, BigInt, BigInt)? onProgress,
     required Function(String) onError,
     required Function() onDone,
   }) async {
     try {
-      final progress = state.sendFile(peer: peer, name: name, path: path);
+      final progress = state.sendFile(peer: peer, name: name, source: source);
 
       progress.listen((event) {
         event.when(

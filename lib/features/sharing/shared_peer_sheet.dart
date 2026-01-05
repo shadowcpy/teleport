@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/src/rust/api/teleport.dart';
+
+class SharedTransfer {
+  final String name;
+  final String? path;
+  final int? fd;
+
+  const SharedTransfer({required this.name, this.path, this.fd});
+}
 
 class SharedPeerSheet extends StatefulWidget {
   final TeleportStore store;
-  final List<String> files;
+  final List<SharedTransfer> files;
   final Function() onSent;
 
   const SharedPeerSheet({
@@ -33,10 +42,20 @@ class _SharedPeerSheetState extends State<SharedPeerSheet> {
     Navigator.pop(context); // Close sheet
     widget.onSent(); // Notify parent
 
-    for (final path in widget.files) {
-      final name = path.split('/').last;
-
-      await widget.store.sendFile(peer: peerId, path: path, name: name);
+    for (final file in widget.files) {
+      if (file.fd != null) {
+        await widget.store.sendFileWithSource(
+          peer: peerId,
+          name: file.name,
+          source: SendFileSource.fd(file.fd!),
+        );
+      } else if (file.path != null) {
+        await widget.store.sendFileWithSource(
+          peer: peerId,
+          name: file.name,
+          source: SendFileSource.path(file.path!),
+        );
+      }
     }
 
     // Minimize immediately after starting send
@@ -65,7 +84,9 @@ class _SharedPeerSheetState extends State<SharedPeerSheet> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  "Send ${widget.files.length} file(s)",
+                  widget.files.length == 1
+                      ? "Send 1 file"
+                      : "Send ${widget.files.length} files",
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),

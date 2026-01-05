@@ -6,8 +6,6 @@ import android.provider.OpenableColumns
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.File
-import java.io.FileOutputStream
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.teleport/app"
@@ -15,6 +13,7 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        SharingSink.handleSharingIntent(this, intent, false)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -25,34 +24,29 @@ class MainActivity : FlutterActivity() {
                     moveTaskToBack(true)
                     result.success(null)
                 }
-                "copySharedFile" -> {
+                "openSharedFd" -> {
                     val uriString = call.argument<String>("uri")
                     if (uriString == null) {
                         result.error("bad_args", "Missing uri", null)
                         return@setMethodCallHandler
                     }
                     try {
-                        val path = copySharedFileToCache(Uri.parse(uriString))
-                        result.success(path)
+                        val uri = Uri.parse(uriString)
+                        val name = queryDisplayName(uri) ?: "shared_file"
+                        val pfd = contentResolver.openFileDescriptor(uri, "r")
+                            ?: throw IllegalStateException("Unable to open file descriptor")
+                        val fd = pfd.detachFd()
+                        result.success(mapOf("fd" to fd, "name" to name))
                     } catch (e: Exception) {
-                        result.error("copy_failed", e.message, null)
+                        result.error("open_fd_failed", e.message, null)
                     }
                 }
                 else -> result.notImplemented()
             }
         }
-    }
 
-    private fun copySharedFileToCache(uri: Uri): String {
-        val displayName = queryDisplayName(uri) ?: "shared_${System.currentTimeMillis()}"
-        val outFile = File(cacheDir, uniqueName(displayName))
-        contentResolver.openInputStream(uri).use { input ->
-            if (input == null) throw IllegalStateException("Unable to open input stream")
-            FileOutputStream(outFile).use { output ->
-                input.copyTo(output)
-            }
-        }
-        return outFile.absolutePath
+        SharingSink.register(flutterEngine, this)
+        SharingSink.handleSharingIntent(this, intent, true)
     }
 
     private fun queryDisplayName(uri: Uri): String? {
@@ -64,12 +58,4 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun uniqueName(base: String): String {
-        val file = File(cacheDir, base)
-        if (!file.exists()) return base
-        val dot = base.lastIndexOf('.')
-        val stem = if (dot > 0) base.substring(0, dot) else base
-        val ext = if (dot > 0) base.substring(dot) else ""
-        return "${stem}_${System.currentTimeMillis()}$ext"
-    }
 }

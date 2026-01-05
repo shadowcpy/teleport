@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 
 class IncomingPairingSheet extends StatefulWidget {
@@ -19,6 +20,21 @@ class IncomingPairingSheet extends StatefulWidget {
 class _IncomingPairingSheetState extends State<IncomingPairingSheet> {
   final _codeController = TextEditingController();
   String? _errorText;
+
+  String _shortPeerId(String peer) {
+    const maxLen = 12;
+    if (peer.length <= maxLen) return peer;
+    return peer.substring(0, maxLen);
+  }
+
+  TextStyle? _peerIdStyle(BuildContext context) {
+    final base = Theme.of(context).textTheme.bodySmall?.copyWith(
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.5,
+    );
+    if (base == null) return null;
+    return GoogleFonts.jetBrainsMono(textStyle: base);
+  }
 
   @override
   void dispose() {
@@ -83,9 +99,21 @@ class _IncomingPairingSheetState extends State<IncomingPairingSheet> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    widget.pair.friendlyName,
-                    style: Theme.of(context).textTheme.titleSmall,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.pair.friendlyName,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _shortPeerId(widget.pair.peer),
+                        style: _peerIdStyle(context),
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -85,16 +85,15 @@ impl AppState {
         &self,
         peer: String,
         name: String,
-        path: String,
+        source: SendFileSource,
         progress: StreamSink<OutboundFileStatus>,
     ) -> anyhow::Result<()> {
         let id: EndpointId = peer.parse()?;
-        let path = PathBuf::from(path);
         self.dispatcher
             .tell(ActionRequest::SendFile {
                 to: id,
                 name,
-                path,
+                source,
                 progress,
             })
             .await?;
@@ -178,6 +177,12 @@ pub enum OutboundFileStatus {
     Progress { offset: u64, size: u64 },
     Done,
     Error(String),
+}
+
+#[frb]
+pub enum SendFileSource {
+    Path(String),
+    Fd(i32),
 }
 
 #[frb]

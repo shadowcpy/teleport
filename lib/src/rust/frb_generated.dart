@@ -118,7 +118,7 @@ abstract class RustLibApi extends BaseApi {
     required AppState that,
     required String peer,
     required String name,
-    required String path,
+    required SendFileSource source,
   });
 
   Future<void> crateApiTeleportAppStateSetDeviceName({
@@ -519,7 +519,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required AppState that,
     required String peer,
     required String name,
-    required String path,
+    required SendFileSource source,
   }) {
     final progress = RustStreamSink<OutboundFileStatus>();
     unawaited(
@@ -533,7 +533,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             );
             sse_encode_String(peer, serializer);
             sse_encode_String(name, serializer);
-            sse_encode_String(path, serializer);
+            sse_encode_box_autoadd_send_file_source(source, serializer);
             sse_encode_StreamSink_outbound_file_status_Sse(
               progress,
               serializer,
@@ -550,7 +550,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             decodeErrorData: sse_decode_AnyhowException,
           ),
           constMeta: kCrateApiTeleportAppStateSendFileConstMeta,
-          argValues: [that, peer, name, path, progress],
+          argValues: [that, peer, name, source, progress],
           apiImpl: this,
         ),
       ),
@@ -561,7 +561,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiTeleportAppStateSendFileConstMeta =>
       const TaskConstMeta(
         debugName: "AppState_send_file",
-        argNames: ["that", "peer", "name", "path", "progress"],
+        argNames: ["that", "peer", "name", "source", "progress"],
       );
 
   @override
@@ -899,6 +899,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SendFileSource dco_decode_box_autoadd_send_file_source(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_send_file_source(raw);
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -1021,6 +1027,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       throw Exception('Expected 2 elements, got ${arr.length}');
     }
     return (dco_decode_String(arr[0]), dco_decode_String(arr[1]));
+  }
+
+  @protected
+  SendFileSource dco_decode_send_file_source(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return SendFileSource_Path(dco_decode_String(raw[1]));
+      case 1:
+        return SendFileSource_Fd(dco_decode_i_32(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -1220,6 +1239,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  SendFileSource sse_decode_box_autoadd_send_file_source(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_send_file_source(deserializer));
+  }
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
@@ -1369,6 +1396,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_field0 = sse_decode_String(deserializer);
     var var_field1 = sse_decode_String(deserializer);
     return (var_field0, var_field1);
+  }
+
+  @protected
+  SendFileSource sse_decode_send_file_source(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_String(deserializer);
+        return SendFileSource_Path(var_field0);
+      case 1:
+        var var_field0 = sse_decode_i_32(deserializer);
+        return SendFileSource_Fd(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1617,6 +1661,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_send_file_source(
+    SendFileSource self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_send_file_source(self, serializer);
+  }
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
@@ -1752,6 +1805,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_send_file_source(
+    SendFileSource self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case SendFileSource_Path(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(field0, serializer);
+      case SendFileSource_Fd(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_i_32(field0, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_u_64(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
@@ -1869,12 +1938,12 @@ class AppStateImpl extends RustOpaque implements AppState {
   Stream<OutboundFileStatus> sendFile({
     required String peer,
     required String name,
-    required String path,
+    required SendFileSource source,
   }) => RustLib.instance.api.crateApiTeleportAppStateSendFile(
     that: this,
     peer: peer,
     name: name,
-    path: path,
+    source: source,
   );
 
   Future<void> setDeviceName({required String name}) => RustLib.instance.api

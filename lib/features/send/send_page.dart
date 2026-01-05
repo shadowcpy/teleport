@@ -205,6 +205,14 @@ class _SendPageState extends State<SendPage> {
     return GoogleFonts.jetBrainsMono(textStyle: base);
   }
 
+  TextStyle? _peerIdStyleOrDefault(
+    BuildContext context, {
+    required bool useMono,
+  }) {
+    if (!useMono) return Theme.of(context).textTheme.bodySmall;
+    return _peerIdStyle(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = TeleportScope.of(context);
@@ -296,7 +304,10 @@ class _SendPageState extends State<SendPage> {
                             _selectedPeer == null
                                 ? "Choose a device below to send a file"
                                 : _shortPeerId(_selectedPeer!),
-                            style: _peerIdStyle(context),
+                            style: _peerIdStyleOrDefault(
+                              context,
+                              useMono: _selectedPeer != null,
+                            ),
                           ),
                         ],
                       ),
