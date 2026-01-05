@@ -1,21 +1,11 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
-import 'package:teleport/file_sender.dart';
+import 'file_sender.dart';
 
 class SendPage extends StatefulWidget {
-  final AppState state;
-  final List<(String, String)> peers;
-  final Map<String, (BigInt, BigInt)> downloadProgress;
-  final Map<String, UIConnectionQuality> connQuality;
-
-  const SendPage({
-    super.key,
-    required this.state,
-    required this.peers,
-    required this.downloadProgress,
-    required this.connQuality,
-  });
+  const SendPage({super.key});
 
   @override
   State<SendPage> createState() => _SendPageState();
@@ -25,7 +15,7 @@ class _SendPageState extends State<SendPage> {
   String? _selectedPeer;
   double? _uploadProgress; // null = not sending, 0.0-1.0 = sending
 
-  Future<void> _handleSendFile() async {
+  Future<void> _handleSendFile(TeleportStore store) async {
     if (_selectedPeer == null) return;
 
     final result = await FilePicker.platform.pickFiles();
@@ -37,7 +27,7 @@ class _SendPageState extends State<SendPage> {
     if (file.path == null) throw Exception("File path is null");
 
     await FileSender.sendFile(
-      state: widget.state,
+      state: store.state,
       peer: _selectedPeer!,
       path: file.path!,
       name: file.name,
@@ -68,8 +58,11 @@ class _SendPageState extends State<SendPage> {
     );
   }
 
-  Widget _getConnQuality(String peer) {
-    var quality = widget.connQuality[peer];
+  Widget _getConnQuality(
+    String peer,
+    Map<String, UIConnectionQuality> qualityMap,
+  ) {
+    var quality = qualityMap[peer];
     if (quality == null) return SizedBox();
 
     Chip chip(Color color, String label, IconData icon) => Chip(
@@ -103,7 +96,11 @@ class _SendPageState extends State<SendPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.peers.isEmpty) {
+    final store = TeleportScope.of(context);
+    final peers = store.peers;
+    final downloadProgress = store.downloadProgress;
+
+    if (peers.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -131,15 +128,15 @@ class _SendPageState extends State<SendPage> {
             groupValue: _selectedPeer,
             onChanged: (val) => setState(() => _selectedPeer = val),
             child: ListView.builder(
-              itemCount: widget.peers.length,
+              itemCount: peers.length,
               itemBuilder: (context, index) {
-                final peer = widget.peers[index];
+                final peer = peers[index];
                 return RadioListTile<String>(
                   title: Row(
                     children: [
                       Text(peer.$1),
                       SizedBox(width: 10),
-                      _getConnQuality(peer.$2),
+                      _getConnQuality(peer.$2, store.connQuality),
                     ],
                   ),
                   subtitle: Text(peer.$2, style: const TextStyle(fontSize: 10)),
@@ -166,13 +163,15 @@ class _SendPageState extends State<SendPage> {
                     ],
                   )
                 : FilledButton.icon(
-                    onPressed: _selectedPeer == null ? null : _handleSendFile,
+                    onPressed: _selectedPeer == null
+                        ? null
+                        : () => _handleSendFile(store),
                     icon: const Icon(Icons.send),
                     label: const Text("Select File & Send"),
                   ),
           ),
         ),
-        if (widget.downloadProgress.isNotEmpty) ...[
+        if (downloadProgress.isNotEmpty) ...[
           const Divider(),
           const Padding(
             padding: EdgeInsets.all(8.0),
@@ -187,11 +186,9 @@ class _SendPageState extends State<SendPage> {
               constraints: const BoxConstraints(maxHeight: 150),
               child: ListView.builder(
                 shrinkWrap: true,
-                itemCount: widget.downloadProgress.length,
+                itemCount: downloadProgress.length,
                 itemBuilder: (context, index) {
-                  final entry = widget.downloadProgress.entries.elementAt(
-                    index,
-                  );
+                  final entry = downloadProgress.entries.elementAt(index);
                   // entry.key is "peer/filename"
                   final name = entry.key.split('/').last;
                   final (offset, size) = entry.value;

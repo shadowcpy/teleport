@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:teleport/file_sender.dart';
+import 'package:teleport/features/send/file_sender.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 
 class SharedPeerSheet extends StatefulWidget {

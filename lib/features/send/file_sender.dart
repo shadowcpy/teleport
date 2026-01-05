@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'package:teleport/background_service.dart';
-import 'package:teleport/notifications.dart';
+import 'package:teleport/core/services/background_service.dart';
+import 'package:teleport/core/services/notification_service.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 
 class FileSender {

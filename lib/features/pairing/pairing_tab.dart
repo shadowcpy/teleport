@@ -5,28 +5,20 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
+import 'package:teleport/data/state/teleport_store.dart';
 
 import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/lib.dart';
 
 class PairingTab extends StatefulWidget {
-  final AppState state;
-  final String? pairingInfo;
-  final VoidCallback onPeersUpdated;
-
-  const PairingTab({
-    super.key,
-    required this.state,
-    required this.pairingInfo,
-    required this.onPeersUpdated,
-  });
+  const PairingTab({super.key});
 
   @override
   State<PairingTab> createState() => _PairingTabState();
 }
 
 class _PairingTabState extends State<PairingTab> {
-  Future<void> _handleScanQrCode() async {
+  Future<void> _handleScanQrCode(TeleportStore store) async {
     // Logic for mobile scanner bottom sheet
     final scannedInfo = await showModalBottomSheet<String>(
       context: context,
@@ -35,11 +27,14 @@ class _PairingTabState extends State<PairingTab> {
     );
 
     if (scannedInfo != null) {
-      _startPairingProcess(scannedInfo);
+      _startPairingProcess(scannedInfo, store);
     }
   }
 
-  Future<void> _startPairingProcess(String remoteInfo) async {
+  Future<void> _startPairingProcess(
+    String remoteInfo,
+    TeleportStore store,
+  ) async {
     final random = Random();
     final numbers = List.generate(6, (_) => random.nextInt(10));
     final displayCode = numbers.join();
@@ -51,24 +46,29 @@ class _PairingTabState extends State<PairingTab> {
         remoteInfo: remoteInfo,
         pairingCode: numbers,
         displayCode: displayCode,
-        onPair: (info, code) =>
-            widget.state.pairWith(info: info, pairingCode: code),
+        onPair: (info, code) => store.pairWith(info: info, pairingCode: code),
         onSuccess: (newPeers) {
-          widget.onPeersUpdated();
+          store.refreshPeers();
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Successfully paired!")));
         },
-        peersFetcher: widget.state.peers,
+        peersFetcher: store.state.peers,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = TeleportScope.of(context);
+    final pairingInfo = store.pairingInfo;
+
     return Center(
       child: SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (widget.pairingInfo != null)
+            if (pairingInfo != null)
               Card(
                 elevation: 4,
                 child: Padding(
@@ -76,7 +76,7 @@ class _PairingTabState extends State<PairingTab> {
                   child: SizedBox(
                     height: 200,
                     width: 200,
-                    child: PrettyQrView.data(data: widget.pairingInfo!),
+                    child: PrettyQrView.data(data: pairingInfo),
                   ),
                 ),
               ),
@@ -88,7 +88,7 @@ class _PairingTabState extends State<PairingTab> {
             const SizedBox(height: 40),
             if (Platform.isAndroid || Platform.isIOS)
               FilledButton.icon(
-                onPressed: _handleScanQrCode,
+                onPressed: () => _handleScanQrCode(store),
                 icon: const Icon(Icons.qr_code_scanner),
                 label: const Text("Scan QR Code"),
               )
