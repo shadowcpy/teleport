@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:mime/mime.dart';
 import 'package:open_filex/open_filex.dart';
 
 class NotificationService {
@@ -13,7 +14,7 @@ class NotificationService {
 
   Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@drawable/ic_notification');
 
     const LinuxInitializationSettings initializationSettingsLinux =
         LinuxInitializationSettings(defaultActionName: 'Open notification');
@@ -28,7 +29,8 @@ class NotificationService {
       initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         if (details.payload != null) {
-          OpenFilex.open(details.payload!);
+          final path = details.payload!;
+          OpenFilex.open(path, type: lookupMimeType(path));
         }
       },
     );

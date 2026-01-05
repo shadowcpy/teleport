@@ -49,6 +49,7 @@ dependencies:
   flutter_foreground_task: ^9.2.0
   flutter_local_notifications: ^19.5.0
   open_filex: ^4.5.0
+  mime: ^2.0.0
 
 dev_dependencies:
   flutter_test:
@@ -64,6 +65,18 @@ dev_dependencies:
     sdk: flutter
   freezed: ^3.2.4
   build_runner: ^2.10.4
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  image_path: images/logo_teleport.png
+  android: true
+  ios: true
+  web:
+    generate: true
+  windows:
+    generate: true
+  macos:
+    generate: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -76,8 +89,9 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+    - images/logo_teleport.svg
+    - images/logo_teleport.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -105,3 +119,6 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+dependency_overrides:
+  open_filex:
+    path: third_party/open_filex

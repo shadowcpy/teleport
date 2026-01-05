@@ -17,9 +17,7 @@ class WindowManagerService with TrayListener, WindowListener {
 
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
-    await trayManager.setIcon(
-      Platform.isWindows ? 'images/tray_icon.ico' : 'images/tray_icon.png',
-    );
+    await trayManager.setIcon('images/logo_teleport.svg');
     await trayManager.setContextMenu(
       Menu(
         items: [

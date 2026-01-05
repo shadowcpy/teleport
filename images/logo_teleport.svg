@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1024 1024"
+     width="1024"
+     height="1024"
+     role="img"
+     aria-label="Teleport app logo">
+
+  <defs>
+    <!-- Ring gradient -->
+    <linearGradient id="tp-ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6EE7FF"/>
+      <stop offset="55%" stop-color="#7C4DFF"/>
+      <stop offset="100%" stop-color="#FF4FD8"/>
+    </linearGradient>
+
+    <!-- Core sphere gradient -->
+    <radialGradient id="tp-core" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="45%" stop-color="#9FF2FF" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#7C4DFF" stop-opacity="0.18"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Centered icon -->
+  <g transform="translate(512 512)">
+
+    <!-- Outer ring (CRISP, no blur) -->
+    <circle
+      r="300"
+      fill="none"
+      stroke="url(#tp-ring)"
+      stroke-width="64"
+      shape-rendering="geometricPrecision"
+    />
+
+    <!-- Inner sphere -->
+    <circle
+      r="190"
+      fill="url(#tp-core)"
+    />
+
+  </g>
+</svg>

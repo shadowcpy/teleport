@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:mime/mime.dart';
 import 'package:teleport/core/services/sharing_sink.dart';
 import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/core/widgets/teleport_background.dart';
@@ -221,7 +222,10 @@ class _HomePageState extends State<HomePage> {
       _showSnackBar("Download folder not found", isError: true);
       return;
     }
-    final result = await OpenFilex.open(target);
+    final result = await OpenFilex.open(
+      target,
+      type: lookupMimeType(target) ?? "vnd.android.document/directory",
+    );
     if (result.type != ResultType.done) {
       _showSnackBar("Unable to open download folder", isError: true);
     }
@@ -273,7 +277,7 @@ class _HomePageState extends State<HomePage> {
               ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
             },
           ),
-          if (store.targetDir != null)
+          if (store.targetDir != null && !Platform.isAndroid)
             IconButton(
               icon: const Icon(Icons.folder_open),
               tooltip: store.targetDir,

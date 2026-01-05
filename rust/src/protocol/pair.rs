@@ -128,17 +128,16 @@ impl ProtocolHandler for PairAcceptor {
                     .send(&mut framed)
                     .await;
 
-                    if result.is_ok() {
-                        dispatcher
-                            .tell(BGRequest::RegisterPeer(Peer {
-                                id: connection.remote_id(),
+                    dispatcher
+                        .tell(BGRequest::IncomingPairCompleted {
+                            outcome: result.map(|_| Peer {
                                 name: peer_name,
-                            }))
-                            .await
-                            .unwrap();
-                    }
-
-                    resolver.emit(result.map_err(|e| e.to_string()));
+                                id: connection.remote_id(),
+                            }),
+                            resolver,
+                        })
+                        .await
+                        .unwrap();
                     let _ = connection.closed().await;
                 }
                 UIPairReaction::WrongPairingCode => {

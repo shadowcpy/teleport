@@ -28,7 +28,7 @@ use crate::{
     },
     config::{ConfigManager, Peer},
     frb_generated::{RustAutoOpaque, StreamSink},
-    promise::{Promise, init_promise},
+    promise::{Promise, PromiseResolver, init_promise},
     protocol::{
         framed::FramedBiStream,
         pair::{self, MAX_SIZE, Pair, PairAcceptor},
@@ -157,6 +157,16 @@ impl Message<BGRequest> for Dispatcher {
                 self.active_secret = generate_secret(); // Rotate secret
                 let our_name = self.manager.name.clone();
                 BGResponse::IncomingPair { reaction, our_name }
+            }
+            BGRequest::IncomingPairCompleted { outcome, resolver } => {
+                match outcome {
+                    Ok(peer) => {
+                        self.register_peer(peer).await;
+                        resolver.emit(Ok(()));
+                    }
+                    Err(e) => resolver.emit(Err(e.to_string())),
+                }
+                BGResponse::Ack
             }
             BGRequest::RegisterPeer(peer) => {
                 self.register_peer(peer).await;
@@ -601,6 +611,10 @@ pub enum BGRequest {
         name: String,
         code: [u8; 6],
         outcome: Promise<Result<(), String>>,
+    },
+    IncomingPairCompleted {
+        outcome: Result<Peer, anyhow::Error>,
+        resolver: PromiseResolver<Result<(), String>>,
     },
     RegisterPeer(Peer),
     IncomingOffer {
