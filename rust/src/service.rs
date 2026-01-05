@@ -2,13 +2,14 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use anyhow::{Result, bail};
 use flutter_rust_bridge::JoinHandle;
-use futures_util::StreamExt;
+use futures_util::{SinkExt, StreamExt};
 use iroh::{
     EndpointAddr, EndpointId, Watcher,
     endpoint::{Builder, ConnectionType, presets},
     protocol::Router,
 };
 
+use iroh_quinn_proto::TransportConfig;
 use kameo::prelude::*;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -16,6 +17,7 @@ use tokio::{
     io::{AsyncReadExt, BufReader},
     spawn,
 };
+use tokio_util::bytes::BytesMut;
 use tracing::{info, warn};
 
 use crate::{
@@ -30,8 +32,8 @@ use crate::{
         framed::FramedBiStream,
         pair::{self, MAX_SIZE, Pair, PairAcceptor},
         send::{
-            self, CHUNK_SIZE, Chunk, DownloadStatus, FileStatus, Offer, SendAcceptor, SendRequest,
-            SendResponse,
+            self, CHUNK_SIZE, ChunkHeader, DownloadStatus, FileStatus, Offer, SendAcceptor,
+            SendRequest, SendResponse,
         },
     },
 };
@@ -60,8 +62,14 @@ impl Actor for Dispatcher {
     async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
         let DispatcherArgs { manager, temp_dir } = args;
 
+        let mut transport_config = TransportConfig::default();
+        if cfg!(target_os = "android") {
+            transport_config.enable_segmentation_offload(false);
+        }
+
         let endpoint = Builder::new(presets::N0)
             .secret_key(manager.key.clone())
+            .transport_config(transport_config)
             .bind()
             .await?;
 
@@ -305,22 +313,26 @@ impl Dispatcher {
                 }
 
                 let mut offset = 0u64;
-                let mut buffer = [0u8; CHUNK_SIZE];
+                let mut buffer = vec![0u8; CHUNK_SIZE];
                 loop {
                     let n = reader.read(&mut buffer).await?;
                     if n == 0 {
-                        SendRequest::Chunk(None).send(&mut framed).await?;
+                        SendRequest::Finish.send(&mut framed).await?;
                         break;
                     }
 
-                    let chunk = Chunk {
-                        hash: blake3::hash(&buffer[..n]).into(),
-                        data: buffer[..n].to_vec(),
-                    };
+                    let chunk_data = &buffer[..n];
+
+                    let header = ChunkHeader { size: n as u32 };
+
+                    SendRequest::ChunkHeader(header).send(&mut framed).await?;
+                    framed
+                        .write
+                        .send(BytesMut::from(chunk_data).freeze())
+                        .await?;
 
                     offset += n as u64;
 
-                    SendRequest::Chunk(Some(chunk)).send(&mut framed).await?;
                     ui.add(OutboundFileStatus::Progress { offset, size })
                         .unwrap();
                 }

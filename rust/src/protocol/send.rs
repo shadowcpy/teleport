@@ -10,7 +10,11 @@ use iroh::{
 use iroh_quinn_proto::VarInt;
 use kameo::actor::ActorRef;
 use serde::{Deserialize, Serialize};
-use tokio::{fs::File, io::AsyncWriteExt, spawn};
+use tokio::{
+    fs::File,
+    io::{AsyncWriteExt, BufWriter},
+    spawn,
+};
 use tokio_util::bytes::BytesMut;
 use tracing::{error, info};
 
@@ -19,7 +23,7 @@ use crate::{
     service::{BGRequest, BGResponse, Dispatcher},
 };
 
-pub const ALPN: &[u8] = b"teleport/send/0";
+pub const ALPN: &[u8] = b"teleport/send/1";
 
 pub const CHUNK_SIZE: usize = 1024 * 256; // 256 KiB
 pub const MAX_MSG_SIZE: usize = CHUNK_SIZE + 1024;
@@ -33,15 +37,15 @@ pub struct Offer {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Chunk {
-    pub hash: blake3::Hash,
-    pub data: Vec<u8>,
+pub struct ChunkHeader {
+    pub size: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SendRequest {
     Offer(Offer),
-    Chunk(Option<Chunk>),
+    ChunkHeader(ChunkHeader),
+    Finish,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -94,8 +98,6 @@ enum SendError {
     Send(anyhow::Error),
     #[error("Failed to write to file: {0}")]
     WriteFile(std::io::Error),
-    #[error("Chunk hash mismatch")]
-    HashMismatch,
     #[error("Received more data than expected")]
     Oversize,
     #[error("Invalid chunk")]
@@ -109,7 +111,6 @@ impl SendError {
             SendError::ExpectedOffer => (1u32.into(), b"EXP_OFFER"),
             SendError::Send(_) => (1u32.into(), b"SEND_ERR"),
             SendError::WriteFile(_) => (1u32.into(), b"WRITE_ERR"),
-            SendError::HashMismatch => (1u32.into(), b"HASH_MISMATCH"),
             SendError::Oversize => (1u32.into(), b"OVERSIZE"),
             SendError::InvalidChunk => (1u32.into(), b"INV_CHUNK"),
         }
@@ -167,7 +168,8 @@ impl ProtocolHandler for SendAcceptor {
                     return Err(SendError::Send(e));
                 }
 
-                let mut temp_file = File::create(&path).await.map_err(SendError::WriteFile)?;
+                let temp_file = File::create(&path).await.map_err(SendError::WriteFile)?;
+                let mut writer = BufWriter::new(temp_file);
 
                 dispatcher
                     .tell(BGRequest::DownloadStatus(DownloadStatus {
@@ -182,42 +184,57 @@ impl ProtocolHandler for SendAcceptor {
                 loop {
                     let req = SendRequest::recv(&mut framed).await?;
 
-                    let SendRequest::Chunk(chunk) = req else {
-                        return Err(SendError::InvalidChunk);
-                    };
+                    match req {
+                        SendRequest::Offer(_) => return Err(SendError::InvalidChunk),
+                        SendRequest::Finish => {
+                            if offset != size {
+                                error!(
+                                    "Finish received but sizes do not match. Expected {size}, got {offset}"
+                                );
+                                return Err(SendError::InvalidChunk);
+                            }
+                            break;
+                        }
+                        SendRequest::ChunkHeader(header) => {
+                            // Receive raw data
+                            let Some(data) = framed
+                                .read
+                                .try_next()
+                                .await
+                                .map_err(|e| SendError::Recv(e.into()))?
+                            else {
+                                return Err(SendError::InvalidChunk);
+                            };
 
-                    let Some(chunk) = chunk else {
-                        break;
-                    };
+                            if data.len() != header.size as usize {
+                                return Err(SendError::InvalidChunk);
+                            }
 
-                    let expected_hash = blake3::hash(&chunk.data);
-                    if chunk.hash != expected_hash {
-                        return Err(SendError::HashMismatch);
+                            if let Err(e) = writer.write_all(&data).await {
+                                return Err(SendError::WriteFile(e));
+                            }
+
+                            offset += data.len() as u64;
+
+                            info!("Received chunk from {peer_id} ({offset}/{size})");
+
+                            if offset > size {
+                                return Err(SendError::Oversize);
+                            }
+
+                            dispatcher
+                                .tell(BGRequest::DownloadStatus(DownloadStatus {
+                                    peer: peer_id,
+                                    status: FileStatus::Progress { offset, size },
+                                }))
+                                .await
+                                .unwrap();
+                        }
                     }
-
-                    if let Err(e) = temp_file.write_all(&chunk.data).await {
-                        return Err(SendError::WriteFile(e));
-                    }
-
-                    offset += chunk.data.len() as u64;
-
-                    info!("Received chunk from {peer_id} ({offset}/{size}): {expected_hash}");
-
-                    if offset > size {
-                        return Err(SendError::Oversize);
-                    }
-
-                    dispatcher
-                        .tell(BGRequest::DownloadStatus(DownloadStatus {
-                            peer: peer_id,
-                            status: FileStatus::Progress { offset, size },
-                        }))
-                        .await
-                        .unwrap();
                 }
 
-                temp_file.flush().await.map_err(SendError::WriteFile)?;
-                drop(temp_file);
+                writer.flush().await.map_err(SendError::WriteFile)?;
+                drop(writer);
 
                 info!("Download from peer {peer_id} completed");
                 dispatcher
