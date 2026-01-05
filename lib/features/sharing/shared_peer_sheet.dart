@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:teleport/features/send/file_sender.dart';
-import 'package:teleport/src/rust/api/teleport.dart';
+import 'package:teleport/data/state/teleport_store.dart';
 
 class SharedPeerSheet extends StatefulWidget {
-  final AppState state;
-  final List<(String, String)> peers;
+  final TeleportStore store;
   final List<String> files;
   final Function() onSent;
 
   const SharedPeerSheet({
     super.key,
-    required this.state,
-    required this.peers,
+    required this.store,
     required this.files,
     required this.onSent,
   });
@@ -39,15 +36,7 @@ class _SharedPeerSheetState extends State<SharedPeerSheet> {
     for (final path in widget.files) {
       final name = path.split('/').last;
 
-      await FileSender.sendFile(
-        state: widget.state,
-        peer: peerId,
-        path: path,
-        name: name,
-        onProgress: (p) {}, // Handled by background service
-        onError: (e) {}, // Handled by notifications
-        onDone: () {}, // Handled by notifications
-      );
+      await widget.store.sendFile(peer: peerId, path: path, name: name);
     }
 
     // Minimize immediately after starting send
@@ -57,32 +46,65 @@ class _SharedPeerSheetState extends State<SharedPeerSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
+                child: Icon(
+                  Icons.send,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "Send ${widget.files.length} file(s)",
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Text(
-            "Send ${widget.files.length} file(s) to...",
-            style: Theme.of(context).textTheme.titleLarge,
+            "Choose a paired device to start the transfer.",
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),
-          if (widget.peers.isEmpty)
+          if (widget.store.peers.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(child: Text("No paired devices found.")),
             )
           else
-            ListView.builder(
+            ListView.separated(
               shrinkWrap: true,
-              itemCount: widget.peers.length,
+              itemCount: widget.store.peers.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final peer = widget.peers[index];
-                return ListTile(
-                  leading: const Icon(Icons.device_hub),
-                  title: Text(peer.$1),
-                  subtitle: Text(peer.$2),
-                  onTap: () => _sendToPeer(peer.$2),
+                final peer = widget.store.peers[index];
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.12),
+                      child: Icon(
+                        Icons.device_hub,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    title: Text(peer.$1),
+                    subtitle: Text(peer.$2),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () => _sendToPeer(peer.$2),
+                  ),
                 );
               },
             ),

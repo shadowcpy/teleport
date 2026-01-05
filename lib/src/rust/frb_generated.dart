@@ -908,12 +908,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   InboundFileEvent dco_decode_inbound_file_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return InboundFileEvent(
       peer: dco_decode_String(arr[0]),
-      name: dco_decode_String(arr[1]),
-      event: dco_decode_inbound_file_status(arr[2]),
+      peerName: dco_decode_String(arr[1]),
+      fileName: dco_decode_String(arr[2]),
+      event: dco_decode_inbound_file_status(arr[3]),
     );
   }
 
@@ -1228,9 +1229,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   InboundFileEvent sse_decode_inbound_file_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_peer = sse_decode_String(deserializer);
-    var var_name = sse_decode_String(deserializer);
+    var var_peerName = sse_decode_String(deserializer);
+    var var_fileName = sse_decode_String(deserializer);
     var var_event = sse_decode_inbound_file_status(deserializer);
-    return InboundFileEvent(peer: var_peer, name: var_name, event: var_event);
+    return InboundFileEvent(
+      peer: var_peer,
+      peerName: var_peerName,
+      fileName: var_fileName,
+      event: var_event,
+    );
   }
 
   @protected
@@ -1622,7 +1629,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.peer, serializer);
-    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.peerName, serializer);
+    sse_encode_String(self.fileName, serializer);
     sse_encode_inbound_file_status(self.event, serializer);
   }
 

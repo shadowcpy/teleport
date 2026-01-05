@@ -174,6 +174,7 @@ impl ProtocolHandler for SendAcceptor {
                 dispatcher
                     .tell(BGRequest::DownloadStatus(DownloadStatus {
                         peer: peer_id,
+                        file_name: offer.name.clone(),
                         status: FileStatus::Progress { offset: 0, size },
                     }))
                     .await
@@ -225,6 +226,7 @@ impl ProtocolHandler for SendAcceptor {
                             dispatcher
                                 .tell(BGRequest::DownloadStatus(DownloadStatus {
                                     peer: peer_id,
+                                    file_name: offer.name.clone(),
                                     status: FileStatus::Progress { offset, size },
                                 }))
                                 .await
@@ -240,6 +242,7 @@ impl ProtocolHandler for SendAcceptor {
                 dispatcher
                     .tell(BGRequest::DownloadStatus(DownloadStatus {
                         peer: peer_id,
+                        file_name: offer.name.clone(),
                         status: FileStatus::Done { offer, path },
                     }))
                     .await
@@ -261,6 +264,7 @@ impl ProtocolHandler for SendAcceptor {
                 dispatcher
                     .tell(BGRequest::DownloadStatus(DownloadStatus {
                         peer: peer_id,
+                        file_name: String::new(),
                         status: FileStatus::Error(e.to_string()),
                     }))
                     .await
@@ -276,6 +280,7 @@ impl ProtocolHandler for SendAcceptor {
 
 pub struct DownloadStatus {
     pub peer: EndpointId,
+    pub file_name: String,
     pub status: FileStatus,
 }
 

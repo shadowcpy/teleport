@@ -1052,11 +1052,13 @@ impl SseDecode for crate::api::teleport::InboundFileEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_peer = <String>::sse_decode(deserializer);
-        let mut var_name = <String>::sse_decode(deserializer);
+        let mut var_peerName = <String>::sse_decode(deserializer);
+        let mut var_fileName = <String>::sse_decode(deserializer);
         let mut var_event = <crate::api::teleport::InboundFileStatus>::sse_decode(deserializer);
         return crate::api::teleport::InboundFileEvent {
             peer: var_peer,
-            name: var_name,
+            peer_name: var_peerName,
+            file_name: var_fileName,
             event: var_event,
         };
     }
@@ -1394,7 +1396,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::teleport::InboundFileEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
             self.peer.into_into_dart().into_dart(),
-            self.name.into_into_dart().into_dart(),
+            self.peer_name.into_into_dart().into_dart(),
+            self.file_name.into_into_dart().into_dart(),
             self.event.into_into_dart().into_dart(),
         ]
         .into_dart()
@@ -1734,7 +1737,8 @@ impl SseEncode for crate::api::teleport::InboundFileEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <String>::sse_encode(self.peer, serializer);
-        <String>::sse_encode(self.name, serializer);
+        <String>::sse_encode(self.peer_name, serializer);
+        <String>::sse_encode(self.file_name, serializer);
         <crate::api::teleport::InboundFileStatus>::sse_encode(self.event, serializer);
     }
 }

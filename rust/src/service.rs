@@ -373,11 +373,17 @@ impl Dispatcher {
             .iter()
             .find(|p| p.id == file_event.peer)
             .unwrap();
+        let file_name = if file_event.file_name.is_empty() {
+            "Unknown file".to_string()
+        } else {
+            file_event.file_name.clone()
+        };
         match file_event.status {
             FileStatus::Progress { offset, size } => {
                 ui.add(InboundFileEvent {
                     peer: file_event.peer.to_string(),
-                    name: remote_peer.name.clone(),
+                    peer_name: remote_peer.name.clone(),
+                    file_name,
                     event: InboundFileStatus::Progress { offset, size },
                 })
                 .unwrap();
@@ -385,7 +391,8 @@ impl Dispatcher {
             FileStatus::Done { offer, path } => {
                 ui.add(InboundFileEvent {
                     peer: file_event.peer.to_string(),
-                    name: remote_peer.name.clone(),
+                    peer_name: remote_peer.name.clone(),
+                    file_name: offer.name.clone(),
                     event: InboundFileStatus::Done {
                         path: path.to_string_lossy().to_string(),
                         name: offer.name.clone(),
@@ -396,7 +403,8 @@ impl Dispatcher {
             FileStatus::Error(e) => {
                 ui.add(InboundFileEvent {
                     peer: file_event.peer.to_string(),
-                    name: remote_peer.name.clone(),
+                    peer_name: remote_peer.name.clone(),
+                    file_name,
                     event: InboundFileStatus::Error(e),
                 })
                 .unwrap();

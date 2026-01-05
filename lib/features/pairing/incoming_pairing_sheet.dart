@@ -52,35 +52,59 @@ class _IncomingPairingSheetState extends State<IncomingPairingSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            "Incoming Pairing Request",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
           Text(
-            "Device: ${widget.pair.friendlyName}",
+            "Incoming pairing request",
+            style: Theme.of(context).textTheme.titleLarge,
             textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            "Enter the 6-digit code displayed on the other device:",
-            style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 8),
+          Text(
+            "Confirm the 6-digit code shown on the other device.",
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.12),
+                  child: Icon(
+                    Icons.devices,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.pair.friendlyName,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: _codeController,
             keyboardType: TextInputType.number,
             maxLength: 6,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: InputDecoration(
-              border: const OutlineInputBorder(),
               labelText: "Pairing Code",
               errorText: _errorText,
               counterText: "",
+              prefixIcon: const Icon(Icons.pin),
             ),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 24, letterSpacing: 5),
+            style: const TextStyle(fontSize: 24, letterSpacing: 6),
           ),
           const SizedBox(height: 20),
           Row(

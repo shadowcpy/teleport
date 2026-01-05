@@ -9,7 +9,7 @@ class FileSender {
     required String peer,
     required String path,
     required String name,
-    required Function(double) onProgress,
+    Function(double, BigInt, BigInt)? onProgress,
     required Function(String) onError,
     required Function() onDone,
   }) async {
@@ -23,7 +23,7 @@ class FileSender {
             if (size > BigInt.zero) {
               percent = offset.toDouble() / size.toDouble();
             }
-            onProgress(percent);
+            onProgress?.call(percent, offset, size);
 
             // Update Background Notification
             if (Platform.isAndroid) {

@@ -183,7 +183,8 @@ pub enum OutboundFileStatus {
 #[frb]
 pub struct InboundFileEvent {
     pub peer: String,
-    pub name: String,
+    pub peer_name: String,
+    pub file_name: String,
     pub event: InboundFileStatus,
 }
 

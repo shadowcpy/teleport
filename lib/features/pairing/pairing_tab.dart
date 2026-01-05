@@ -63,43 +63,105 @@ class _PairingTabState extends State<PairingTab> {
     final store = TeleportScope.of(context);
     final pairingInfo = store.pairingInfo;
 
-    return Center(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (pairingInfo != null)
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    height: 200,
-                    width: 200,
-                    child: PrettyQrView.data(data: pairingInfo),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 720;
+        final qrCard = Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                Text(
+                  "Your pairing QR",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  height: 220,
+                  width: 220,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: pairingInfo == null
+                      ? const Center(child: CircularProgressIndicator())
+                      : PrettyQrView.data(data: pairingInfo),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Scan this QR on the other device",
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final scanCard = Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Pair from this device",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Scan another device's QR code, then confirm the 6-digit code.",
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                if (Platform.isAndroid || Platform.isIOS)
+                  FilledButton.icon(
+                    onPressed: () => _handleScanQrCode(store),
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text("Scan QR Code"),
+                  )
+                else
+                  Text(
+                    "Use the mobile app to scan",
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  "Keep both devices open and match the 6-digit code.",
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
-              ),
-            const SizedBox(height: 16),
-            const Text(
-              "Scan this QR on the other device",
-              style: TextStyle(color: Colors.grey),
+              ],
             ),
-            const SizedBox(height: 40),
-            if (Platform.isAndroid || Platform.isIOS)
-              FilledButton.icon(
-                onPressed: () => _handleScanQrCode(store),
-                icon: const Icon(Icons.qr_code_scanner),
-                label: const Text("Scan QR Code"),
-              )
-            else
-              const Text(
-                "Use mobile to scan",
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-          ],
-        ),
-      ),
+          ),
+        );
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: isWide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: qrCard),
+                    const SizedBox(width: 16),
+                    Expanded(child: scanCard),
+                  ],
+                )
+              : Column(
+                  children: [qrCard, const SizedBox(height: 16), scanCard],
+                ),
+        );
+      },
     );
   }
 }
@@ -300,15 +362,46 @@ class _QrScannerSheetState extends State<_QrScannerSheet> {
   Widget build(BuildContext context) {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.7,
-      child: MobileScanner(
-        onDetect: (result) {
-          if (_hasScanned) return;
-          final barcode = result.barcodes.firstOrNull;
-          if (barcode?.rawValue != null) {
-            setState(() => _hasScanned = true);
-            Navigator.pop(context, barcode!.rawValue);
-          }
-        },
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Text(
+                  "Scan QR Code",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: MobileScanner(
+                onDetect: (result) {
+                  if (_hasScanned) return;
+                  final barcode = result.barcodes.firstOrNull;
+                  if (barcode?.rawValue != null) {
+                    setState(() => _hasScanned = true);
+                    Navigator.pop(context, barcode!.rawValue);
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "Hold the camera steady inside the frame.",
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }

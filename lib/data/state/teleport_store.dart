@@ -7,6 +7,43 @@ import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/lib.dart';
 import 'package:teleport/core/services/background_service.dart';
 import 'package:teleport/core/services/notification_service.dart';
+import 'package:teleport/features/send/file_sender.dart';
+
+class TransferProgress {
+  final String peer;
+  final String name;
+  BigInt offset;
+  BigInt size;
+  double bytesPerSecond;
+  int _lastTimestampMs;
+  BigInt _lastOffset;
+
+  TransferProgress({
+    required this.peer,
+    required this.name,
+    BigInt? offset,
+    BigInt? size,
+  }) : offset = offset ?? BigInt.zero,
+       size = size ?? BigInt.zero,
+       bytesPerSecond = 0,
+       _lastTimestampMs = DateTime.now().millisecondsSinceEpoch,
+       _lastOffset = offset ?? BigInt.zero;
+
+  void update(BigInt newOffset, BigInt newSize) {
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final deltaMs = nowMs - _lastTimestampMs;
+    if (deltaMs > 0) {
+      final deltaBytes = (newOffset - _lastOffset).toDouble();
+      if (deltaBytes >= 0) {
+        bytesPerSecond = deltaBytes / (deltaMs / 1000.0);
+      }
+    }
+    offset = newOffset;
+    size = newSize;
+    _lastTimestampMs = nowMs;
+    _lastOffset = newOffset;
+  }
+}
 
 class TeleportStore extends ChangeNotifier {
   final AppState state;
@@ -17,7 +54,8 @@ class TeleportStore extends ChangeNotifier {
   final HashMap<String, UIConnectionQuality> _connQuality = HashMap();
   String? _pairingInfo;
   String? _targetDir;
-  final Map<String, (BigInt, BigInt)> _downloadProgress = {};
+  final Map<String, TransferProgress> _downloadProgress = {};
+  final Map<String, TransferProgress> _uploadProgress = {};
 
   // Getters
   List<(String, String)> get peers => List.unmodifiable(_peers);
@@ -25,8 +63,10 @@ class TeleportStore extends ChangeNotifier {
       Map.unmodifiable(_connQuality);
   String? get pairingInfo => _pairingInfo;
   String? get targetDir => _targetDir;
-  Map<String, (BigInt, BigInt)> get downloadProgress =>
+  Map<String, TransferProgress> get downloadProgress =>
       Map.unmodifiable(_downloadProgress);
+  Map<String, TransferProgress> get uploadProgress =>
+      Map.unmodifiable(_uploadProgress);
   bool get isOnboarding => _targetDir == null;
 
   // Subscriptions
@@ -83,17 +123,21 @@ class TeleportStore extends ChangeNotifier {
       _notificationController.stream;
 
   void _handleFileEvent(InboundFileEvent event) {
-    final key = "${event.peer}/${event.name}";
+    final key = "${event.peer}/${event.fileName}";
 
     event.event.when(
       progress: (offset, size) {
-        _downloadProgress[key] = (offset, size);
+        final current =
+            _downloadProgress[key] ??
+            TransferProgress(peer: event.peer, name: event.fileName);
+        current.update(offset, size);
+        _downloadProgress[key] = current;
         notifyListeners();
 
         if (isAndroid) {
           final percent = ((offset / size) * 100).toInt();
           BackgroundService().updateNotification(
-            title: "Downloading ${event.name}",
+            title: "Downloading ${event.fileName}",
             text: "$percent%",
           );
         }
@@ -133,7 +177,7 @@ class TeleportStore extends ChangeNotifier {
         _downloadProgress.remove(key);
         notifyListeners();
 
-        NotificationService().showError(event.name, msg);
+        NotificationService().showError(event.fileName, msg);
         if (isAndroid) {
           BackgroundService().updateNotification(
             title: "Transfer Failed",
@@ -141,7 +185,7 @@ class TeleportStore extends ChangeNotifier {
           );
         }
         _notificationController.add((
-          name: "Error receiving ${event.name}: $msg",
+          name: "Error receiving ${event.fileName}: $msg",
           type: 'error',
         ));
       },
@@ -171,6 +215,45 @@ class TeleportStore extends ChangeNotifier {
     required U8Array6 pairingCode,
   }) {
     return state.pairWith(info: info, pairingCode: pairingCode);
+  }
+
+  Future<void> sendFile({
+    required String peer,
+    required String path,
+    required String name,
+    void Function()? onDone,
+    void Function(String)? onError,
+  }) async {
+    final id = _transferId(peer, name);
+    _uploadProgress[id] = TransferProgress(peer: peer, name: name);
+    notifyListeners();
+
+    await FileSender.sendFile(
+      state: state,
+      peer: peer,
+      path: path,
+      name: name,
+      onProgress: (_, offset, size) {
+        final current = _uploadProgress[id];
+        if (current == null) return;
+        current.update(offset, size);
+        notifyListeners();
+      },
+      onDone: () {
+        _uploadProgress.remove(id);
+        notifyListeners();
+        onDone?.call();
+      },
+      onError: (msg) {
+        _uploadProgress.remove(id);
+        notifyListeners();
+        onError?.call(msg);
+      },
+    );
+  }
+
+  String _transferId(String peer, String name) {
+    return "$peer/$name/${DateTime.now().microsecondsSinceEpoch}";
   }
 }
 

@@ -6,10 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_sharing_intent/flutter_sharing_intent.dart';
 import 'package:flutter_sharing_intent/model/sharing_file.dart';
 import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/core/widgets/teleport_background.dart';
 import 'package:teleport/features/onboarding/onboarding_page.dart';
 import 'package:teleport/features/pairing/incoming_pairing_sheet.dart';
+import 'package:teleport/features/pairing/pairing_page.dart';
 import 'package:teleport/features/pairing/pairing_tab.dart';
 import 'package:teleport/features/send/send_page.dart';
+import 'package:teleport/features/settings/settings_page.dart';
 import 'package:teleport/features/sharing/shared_peer_sheet.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 
@@ -92,8 +95,7 @@ class _HomePageState extends State<HomePage> {
       context: context,
       isScrollControlled: true,
       builder: (ctx) => SharedPeerSheet(
-        state: store.state,
-        peers: store.peers,
+        store: store,
         files: files,
         onSent: () {
           // Callback
@@ -187,27 +189,61 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Teleport"),
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.send), text: "Send"),
-              Tab(icon: Icon(Icons.link), text: "Pair"),
-            ],
-          ),
-          actions: [
-            if (store.targetDir != null)
-              IconButton(
-                icon: const Icon(Icons.folder_open),
-                tooltip: store.targetDir,
-                onPressed: () => _selectTargetDirectory(store),
+    final hasPeers = store.peers.isNotEmpty;
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Teleport"),
+            const SizedBox(height: 2),
+            Text(
+              hasPeers
+                  ? "Ready for background transfers"
+                  : "Pair your first device to unlock transfers",
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
+            ),
           ],
         ),
-        body: const TabBarView(children: [SendPage(), PairingTab()]),
+        actions: [
+          if (hasPeers)
+            IconButton(
+              icon: const Icon(Icons.link),
+              tooltip: "Pair device",
+              onPressed: () {
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const PairingPage()));
+              },
+            ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: "Settings",
+            onPressed: () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
+            },
+          ),
+          if (store.targetDir != null)
+            IconButton(
+              icon: const Icon(Icons.folder_open),
+              tooltip: store.targetDir,
+              onPressed: () => _selectTargetDirectory(store),
+            ),
+        ],
+      ),
+      body: TeleportBackground(
+        padding: hasPeers
+            ? const EdgeInsets.symmetric(horizontal: 12, vertical: 12)
+            : EdgeInsets.zero,
+        child: hasPeers ? const SendPage() : const PairingTab(),
       ),
     );
   }

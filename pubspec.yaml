@@ -2,7 +2,7 @@ name: teleport
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -38,6 +38,7 @@ dependencies:
   rust_lib_teleport:
     path: rust_builder
   flutter_rust_bridge: 2.11.1
+  google_fonts: ^6.3.0
   window_manager: ^0.5.1
   tray_manager: ^0.5.2
   path_provider: ^2.1.5
@@ -59,7 +60,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^6.0.0
+  #  flutter_lints: ^6.0.0
   integration_test:
     sdk: flutter
   freezed: ^3.2.4
@@ -70,7 +71,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

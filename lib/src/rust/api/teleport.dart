@@ -57,17 +57,20 @@ abstract class AppState implements RustOpaqueInterface {
 
 class InboundFileEvent {
   final String peer;
-  final String name;
+  final String peerName;
+  final String fileName;
   final InboundFileStatus event;
 
   const InboundFileEvent({
     required this.peer,
-    required this.name,
+    required this.peerName,
+    required this.fileName,
     required this.event,
   });
 
   @override
-  int get hashCode => peer.hashCode ^ name.hashCode ^ event.hashCode;
+  int get hashCode =>
+      peer.hashCode ^ peerName.hashCode ^ fileName.hashCode ^ event.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -75,7 +78,8 @@ class InboundFileEvent {
       other is InboundFileEvent &&
           runtimeType == other.runtimeType &&
           peer == other.peer &&
-          name == other.name &&
+          peerName == other.peerName &&
+          fileName == other.fileName &&
           event == other.event;
 }
 

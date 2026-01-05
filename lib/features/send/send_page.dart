@@ -1,8 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/features/pairing/pairing_page.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
-import 'file_sender.dart';
 
 class SendPage extends StatefulWidget {
   const SendPage({super.key});
@@ -13,7 +13,12 @@ class SendPage extends StatefulWidget {
 
 class _SendPageState extends State<SendPage> {
   String? _selectedPeer;
-  double? _uploadProgress; // null = not sending, 0.0-1.0 = sending
+
+  void _openPairingTab() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const PairingPage()));
+  }
 
   Future<void> _handleSendFile(TeleportStore store) async {
     if (_selectedPeer == null) return;
@@ -21,29 +26,21 @@ class _SendPageState extends State<SendPage> {
     final result = await FilePicker.platform.pickFiles();
     if (result == null || result.files.isEmpty) return;
 
-    setState(() => _uploadProgress = 0.0);
-
     final file = result.files.first;
     if (file.path == null) throw Exception("File path is null");
 
-    await FileSender.sendFile(
-      state: store.state,
+    await store.sendFile(
       peer: _selectedPeer!,
       path: file.path!,
       name: file.name,
-      onProgress: (percent) {
-        if (mounted) setState(() => _uploadProgress = percent);
-      },
       onDone: () {
         if (mounted) {
           _showSnackBar("File sent successfully", isError: false);
-          setState(() => _uploadProgress = null);
         }
       },
       onError: (msg) {
         if (mounted) {
           _showSnackBar("Failed to send: $msg", isError: true);
-          setState(() => _uploadProgress = null);
         }
       },
     );
@@ -58,12 +55,110 @@ class _SendPageState extends State<SendPage> {
     );
   }
 
+  String _formatBytes(num bytes) {
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    var value = bytes.toDouble();
+    var unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex++;
+    }
+    final decimals = value >= 100 ? 0 : 1;
+    return "${value.toStringAsFixed(decimals)} ${units[unitIndex]}";
+  }
+
+  String _formatSpeed(double bytesPerSecond) {
+    if (bytesPerSecond <= 0) return "Starting...";
+    return "${_formatBytes(bytesPerSecond)}/s";
+  }
+
+  Widget _transferCard({
+    required String title,
+    required IconData icon,
+    required Map<String, TransferProgress> transfers,
+    required Map<String, String> peerLabels,
+    required Color accentColor,
+  }) {
+    return Card(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: accentColor),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...transfers.entries.map((entry) {
+              final progress = entry.value;
+              final peerLabel = peerLabels[progress.peer] ?? "Unknown device";
+              double percent = 0.0;
+              if (progress.size > BigInt.zero) {
+                percent = progress.offset.toDouble() / progress.size.toDouble();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.insert_drive_file,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                progress.name,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "$peerLabel | ${_formatSpeed(progress.bytesPerSecond)}",
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text("${(percent * 100).toStringAsFixed(0)}%"),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    LinearProgressIndicator(
+                      value: percent,
+                      color: accentColor,
+                      backgroundColor: accentColor.withValues(alpha: 0.2),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _getConnQuality(
     String peer,
     Map<String, UIConnectionQuality> qualityMap,
   ) {
     var quality = qualityMap[peer];
-    if (quality == null) return SizedBox();
+    if (quality == null) return const SizedBox();
 
     Chip chip(Color color, String label, IconData icon) => Chip(
       visualDensity: VisualDensity(horizontal: -4, vertical: -4),
@@ -98,115 +193,204 @@ class _SendPageState extends State<SendPage> {
   Widget build(BuildContext context) {
     final store = TeleportScope.of(context);
     final peers = store.peers;
+    final peerLabels = {for (final peer in peers) peer.$2: peer.$1};
     final downloadProgress = store.downloadProgress;
+    final uploadProgress = store.uploadProgress;
 
     if (peers.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.devices_other, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text("No paired devices."),
-            Text("Go to the 'Pair' tab to connect."),
-          ],
+      return Center(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.devices_other,
+                  size: 56,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "No paired devices yet",
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Pair a device to start sending files instantly.",
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _openPairingTab,
+                  icon: const Icon(Icons.link),
+                  label: const Text("Go to pairing"),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
 
-    return Column(
+    String? selectedLabel;
+    for (final peer in peers) {
+      if (peer.$2 == _selectedPeer) {
+        selectedLabel = peer.$1;
+        break;
+      }
+    }
+
+    final hasTransfers =
+        uploadProgress.isNotEmpty || downloadProgress.isNotEmpty;
+    return ListView(
       children: [
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            "Select a device to send to:",
-            style: TextStyle(fontWeight: FontWeight.bold),
+        Text("Quick send", style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.12),
+                      child: Icon(
+                        Icons.send_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            selectedLabel ?? "No device selected",
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedPeer == null
+                                ? "Choose a device below to send a file"
+                                : _selectedPeer!,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: _selectedPeer == null
+                      ? null
+                      : () => _handleSendFile(store),
+                  icon: const Icon(Icons.attach_file),
+                  label: const Text("Choose file & send"),
+                ),
+              ],
+            ),
           ),
         ),
-        Expanded(
-          child: RadioGroup<String>(
-            groupValue: _selectedPeer,
-            onChanged: (val) => setState(() => _selectedPeer = val),
-            child: ListView.builder(
-              itemCount: peers.length,
-              itemBuilder: (context, index) {
-                final peer = peers[index];
-                return RadioListTile<String>(
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                "Devices",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const PairingPage()));
+              },
+              icon: const Icon(Icons.link),
+              label: const Text("Pair new"),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        RadioGroup<String>(
+          groupValue: _selectedPeer,
+          onChanged: (val) => setState(() => _selectedPeer = val),
+          child: ListView.separated(
+            itemCount: peers.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final peer = peers[index];
+              return Card(
+                child: RadioListTile<String>(
+                  value: peer.$2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                   title: Row(
                     children: [
-                      Text(peer.$1),
-                      SizedBox(width: 10),
+                      CircleAvatar(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.12),
+                        child: Icon(
+                          Icons.device_hub,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              peer.$1,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              peer.$2,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
                       _getConnQuality(peer.$2, store.connQuality),
                     ],
                   ),
-                  subtitle: Text(peer.$2, style: const TextStyle(fontSize: 10)),
-                  value: peer.$2,
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: _uploadProgress != null
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      LinearProgressIndicator(value: _uploadProgress),
-                      const SizedBox(height: 5),
-                      Text(
-                        "Sending... ${(_uploadProgress! * 100).toStringAsFixed(0)}%",
-                      ),
-                    ],
-                  )
-                : FilledButton.icon(
-                    onPressed: _selectedPeer == null
-                        ? null
-                        : () => _handleSendFile(store),
-                    icon: const Icon(Icons.send),
-                    label: const Text("Select File & Send"),
-                  ),
-          ),
-        ),
-        if (downloadProgress.isNotEmpty) ...[
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              "Incoming Files",
-              style: TextStyle(fontWeight: FontWeight.bold),
+        if (hasTransfers) ...[
+          const SizedBox(height: 16),
+          if (uploadProgress.isNotEmpty)
+            _transferCard(
+              title: "Outgoing",
+              icon: Icons.upload_rounded,
+              transfers: uploadProgress,
+              peerLabels: peerLabels,
+              accentColor: Theme.of(context).colorScheme.primary,
             ),
-          ),
-          Expanded(
-            flex: 0,
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 150),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: downloadProgress.length,
-                itemBuilder: (context, index) {
-                  final entry = downloadProgress.entries.elementAt(index);
-                  // entry.key is "peer/filename"
-                  final name = entry.key.split('/').last;
-                  final (offset, size) = entry.value;
-                  // Handle potential division by zero just in case
-                  double progress = 0.0;
-                  if (size > BigInt.zero) {
-                    progress = offset.toDouble() / size.toDouble();
-                  }
-                  return ListTile(
-                    leading: const Icon(Icons.download),
-                    title: Text(name),
-                    subtitle: LinearProgressIndicator(value: progress),
-                    trailing: Text("${(progress * 100).toStringAsFixed(0)}%"),
-                  );
-                },
-              ),
+          if (uploadProgress.isNotEmpty && downloadProgress.isNotEmpty)
+            const SizedBox(height: 10),
+          if (downloadProgress.isNotEmpty)
+            _transferCard(
+              title: "Incoming",
+              icon: Icons.download_rounded,
+              transfers: downloadProgress,
+              peerLabels: peerLabels,
+              accentColor: Theme.of(context).colorScheme.secondaryContainer,
             ),
-          ),
         ],
       ],
     );
