@@ -1,14 +1,14 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use anyhow::{Result, bail};
+use flutter_rust_bridge::JoinHandle;
+use futures_util::StreamExt;
 use iroh::{
-    EndpointAddr, EndpointId,
-    discovery::mdns::MdnsDiscoveryBuilder,
-    endpoint::{Builder, TransportConfig, presets},
+    EndpointAddr, EndpointId, Watcher,
+    endpoint::{Builder, ConnectionType, presets},
     protocol::Router,
 };
 
-use iroh_quinn_proto::VarInt;
 use kameo::prelude::*;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -21,7 +21,7 @@ use tracing::{info, warn};
 use crate::{
     api::teleport::{
         InboundFileEvent, InboundFileStatus, InboundPair, OutboundFileStatus, PairingResponse,
-        UIPairReaction, UIPromise, UIResolver,
+        UIConnectionQuality, UIConnectionQualityUpdate, UIPairReaction, UIPromise, UIResolver,
     },
     config::{ConfigManager, Peer},
     frb_generated::{RustAutoOpaque, StreamSink},
@@ -43,6 +43,8 @@ pub struct Dispatcher {
     temp_dir: PathBuf,
     file_subscription: Option<Arc<StreamSink<InboundFileEvent>>>,
     pairing_subscription: Option<StreamSink<InboundPair>>,
+    conn_quality_subscription: Option<StreamSink<UIConnectionQualityUpdate>>,
+    conn_quality_tasks: HashMap<EndpointId, JoinHandle<()>>,
     active_secret: Vec<u8>,
 }
 
@@ -58,14 +60,8 @@ impl Actor for Dispatcher {
     async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
         let DispatcherArgs { manager, temp_dir } = args;
 
-        let mut transport_config = TransportConfig::default();
-        transport_config.enable_segmentation_offload(false);
-        transport_config.max_idle_timeout(Some(VarInt::from_u32(5_000).into()));
-
         let endpoint = Builder::new(presets::N0)
-            .discovery(MdnsDiscoveryBuilder::default())
             .secret_key(manager.key.clone())
-            .transport_config(transport_config)
             .bind()
             .await?;
 
@@ -96,6 +92,8 @@ impl Actor for Dispatcher {
             temp_dir,
             file_subscription: None,
             pairing_subscription: None,
+            conn_quality_subscription: None,
+            conn_quality_tasks: HashMap::new(),
             active_secret: generate_secret(),
         })
     }
@@ -171,6 +169,42 @@ impl Message<BGRequest> for Dispatcher {
                 BGResponse::ValidationResult(valid)
             }
             BGRequest::GetSecret => BGResponse::Secret(self.active_secret.clone()),
+            BGRequest::StartConnectionQualityTask(peer) => {
+                let this = self.this.clone();
+                let router = self.router.clone();
+                if self.conn_quality_tasks.contains_key(&peer) {
+                    return BGResponse::Ack;
+                }
+                let Some(watcher) = router.endpoint().conn_type(peer) else {
+                    return BGResponse::Ack;
+                };
+                let handle = spawn(async move {
+                    let mut stream = watcher.stream();
+                    while let Some(update) = stream.next().await {
+                        this.tell(BGRequest::ConnectionQualityUpdate { peer, update })
+                            .await
+                            .unwrap();
+                    }
+                });
+                self.conn_quality_tasks.insert(peer, handle);
+                BGResponse::Ack
+            }
+            BGRequest::ConnectionQualityUpdate { peer, update } => {
+                if let Some(ref ui) = self.conn_quality_subscription {
+                    let quality = match update {
+                        ConnectionType::Direct(_) => UIConnectionQuality::Direct,
+                        ConnectionType::Relay(_) => UIConnectionQuality::Relay,
+                        ConnectionType::Mixed(_, _) => UIConnectionQuality::Mixed,
+                        ConnectionType::None => UIConnectionQuality::None,
+                    };
+                    ui.add(UIConnectionQualityUpdate {
+                        peer: peer.to_string(),
+                        quality,
+                    })
+                    .unwrap();
+                }
+                BGResponse::Ack
+            }
         }
     }
 }
@@ -190,6 +224,10 @@ impl Message<UIRequest> for Dispatcher {
             }
             UIRequest::FileSubscription(sub) => {
                 self.file_subscription = Some(Arc::new(sub));
+                UIResponse::Ack
+            }
+            UIRequest::ConnQualitySubscription(sub) => {
+                self.conn_quality_subscription = Some(sub);
                 UIResponse::Ack
             }
             UIRequest::SetTargetDir(path_buf) => {
@@ -231,6 +269,7 @@ impl Dispatcher {
         ui: StreamSink<OutboundFileStatus>,
     ) {
         let router = self.router.clone();
+        let this = self.this.clone();
 
         spawn(async move {
             let action = async {
@@ -241,6 +280,11 @@ impl Dispatcher {
                 let mut reader = BufReader::new(file);
 
                 let conn = router.endpoint().connect(peer, send::ALPN).await?;
+
+                this.tell(BGRequest::StartConnectionQualityTask(peer))
+                    .await
+                    .unwrap();
+
                 let (send, recv) = conn.open_bi().await?;
                 let mut framed = FramedBiStream::new((send, recv), send::MAX_MSG_SIZE);
 
@@ -535,11 +579,17 @@ pub enum BGRequest {
     DownloadStatus(DownloadStatus),
     ValidateSecret(Vec<u8>),
     GetSecret,
+    StartConnectionQualityTask(EndpointId),
+    ConnectionQualityUpdate {
+        peer: EndpointId,
+        update: ConnectionType,
+    },
 }
 
 pub enum UIRequest {
     PairingSubscription(StreamSink<InboundPair>),
     FileSubscription(StreamSink<InboundFileEvent>),
+    ConnQualitySubscription(StreamSink<UIConnectionQualityUpdate>),
     GetTargetDir,
     SetTargetDir(PathBuf),
     GetLocalAddr,

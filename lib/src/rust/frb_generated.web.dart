@@ -93,6 +93,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   dco_decode_StreamSink_outbound_file_status_Sse(dynamic raw);
 
   @protected
+  RustStreamSink<UIConnectionQualityUpdate>
+  dco_decode_StreamSink_ui_connection_quality_update_Sse(dynamic raw);
+
+  @protected
   String dco_decode_String(dynamic raw);
 
   @protected
@@ -136,6 +140,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   U8Array6 dco_decode_u_8_array_6(dynamic raw);
+
+  @protected
+  UIConnectionQuality dco_decode_ui_connection_quality(dynamic raw);
+
+  @protected
+  UIConnectionQualityUpdate dco_decode_ui_connection_quality_update(
+    dynamic raw,
+  );
 
   @protected
   UIPairReaction dco_decode_ui_pair_reaction(dynamic raw);
@@ -206,6 +218,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   sse_decode_StreamSink_outbound_file_status_Sse(SseDeserializer deserializer);
 
   @protected
+  RustStreamSink<UIConnectionQualityUpdate>
+  sse_decode_StreamSink_ui_connection_quality_update_Sse(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
@@ -257,6 +275,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   U8Array6 sse_decode_u_8_array_6(SseDeserializer deserializer);
+
+  @protected
+  UIConnectionQuality sse_decode_ui_connection_quality(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  UIConnectionQualityUpdate sse_decode_ui_connection_quality_update(
+    SseDeserializer deserializer,
+  );
 
   @protected
   UIPairReaction sse_decode_ui_pair_reaction(SseDeserializer deserializer);
@@ -344,6 +372,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_StreamSink_ui_connection_quality_update_Sse(
+    RustStreamSink<UIConnectionQualityUpdate> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
@@ -411,6 +445,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_u_8_array_6(U8Array6 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_ui_connection_quality(
+    UIConnectionQuality self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_ui_connection_quality_update(
+    UIConnectionQualityUpdate self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_ui_pair_reaction(

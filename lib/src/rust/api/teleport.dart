@@ -17,6 +17,8 @@ Future<void> initLogging() =>
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<AppState>>
 abstract class AppState implements RustOpaqueInterface {
+  Stream<UIConnectionQualityUpdate> connQualitySubscription();
+
   Stream<InboundFileEvent> fileSubscription();
 
   Future<String> getAddr();
@@ -153,7 +155,28 @@ sealed class PairingResponse with _$PairingResponse {
 
   const factory PairingResponse.success() = PairingResponse_Success;
   const factory PairingResponse.wrongCode() = PairingResponse_WrongCode;
+  const factory PairingResponse.wrongSecret() = PairingResponse_WrongSecret;
   const factory PairingResponse.error(String field0) = PairingResponse_Error;
+}
+
+enum UIConnectionQuality { direct, mixed, relay, none }
+
+class UIConnectionQualityUpdate {
+  final String peer;
+  final UIConnectionQuality quality;
+
+  const UIConnectionQualityUpdate({required this.peer, required this.quality});
+
+  @override
+  int get hashCode => peer.hashCode ^ quality.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UIConnectionQualityUpdate &&
+          runtimeType == other.runtimeType &&
+          peer == other.peer &&
+          quality == other.quality;
 }
 
 enum UIPairReaction { accept, reject, wrongPairingCode }

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_sharing_intent/model/sharing_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -13,6 +15,10 @@ import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/frb_generated.dart';
 import 'package:teleport/send_page.dart';
 import 'package:teleport/incoming_pairing_sheet.dart';
+import 'package:teleport/background_service.dart';
+import 'package:teleport/notifications.dart';
+import 'package:teleport/shared_peer_sheet.dart';
+import 'package:flutter_sharing_intent/flutter_sharing_intent.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +26,12 @@ Future<void> main() async {
 
   if (!Platform.isAndroid) {
     await windowManager.ensureInitialized();
+  } else {
+    await BackgroundService().init();
+    await BackgroundService().startService();
   }
+
+  await NotificationService().init();
 
   final persistentDirectory = await getApplicationDocumentsDirectory();
   final tempDirectory = await getApplicationCacheDirectory();
@@ -58,10 +69,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
   // State variables
   List<(String, String)> _peers = [];
-  // String? _selectedPeer; // Moved to SendPage
+  HashMap<String, UIConnectionQuality> _connQuality = HashMap();
   String? _pairingInfo;
   String? _targetDir;
-  // double? _uploadProgress; // Moved to SendPage
   final Map<String, (BigInt, BigInt)> _downloadProgress =
       {}; // Key: "$peer/$filename"
   bool _isOnboarding = false;
@@ -69,6 +79,7 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
   // Stream Subscriptions for cleanup
   StreamSubscription? _pairingSub;
   StreamSubscription? _fileSub;
+  StreamSubscription? _qualitySub;
 
   @override
   void initState() {
@@ -81,6 +92,7 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
   void dispose() {
     _pairingSub?.cancel();
     _fileSub?.cancel();
+    _qualitySub?.cancel();
     if (!Platform.isAndroid) {
       trayManager.removeListener(this);
       windowManager.removeListener(this);
@@ -147,12 +159,28 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
               _downloadProgress[key] = (offset, size);
             });
           }
+          // Update Background Notification
+          if (Platform.isAndroid) {
+            final percent = ((offset / size) * 100).toInt();
+            BackgroundService().updateNotification(
+              title: "Downloading ${event.name}",
+              text: "$percent%",
+            );
+          }
         },
         done: (path, name) async {
           if (mounted) {
             setState(() {
               _downloadProgress.remove(key);
             });
+          }
+
+          // Reset Background Notification
+          if (Platform.isAndroid) {
+            BackgroundService().updateNotification(
+              title: "Teleport is running",
+              text: "Ready to receive files",
+            );
           }
 
           if (_targetDir == null) return;
@@ -162,6 +190,9 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
             final destPath = "$_targetDir/$name";
             await tempFile.copy(destPath);
             await tempFile.delete(); // Cleanup temp
+
+            // Show Local Notification
+            NotificationService().showFileReceived(destPath, name);
 
             if (mounted) {
               _showSnackBar(
@@ -182,9 +213,64 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
             });
             _showSnackBar("Error receiving ${event.name}: $msg", isError: true);
           }
+
+          // Show Error Notification
+          NotificationService().showError(event.name, msg);
+
+          // Update Background Notification to Error
+          if (Platform.isAndroid) {
+            BackgroundService().updateNotification(
+              title: "Transfer Failed",
+              text: msg,
+            );
+          }
         },
       );
     });
+
+    _qualitySub = widget.state.connQualitySubscription().listen((event) {
+      setState(() {
+        _connQuality[event.peer] = event.quality;
+      });
+    });
+
+    // 6. Subscribe to Share Intents
+    FlutterSharingIntent.instance.getMediaStream().listen(
+      (List<SharedFile> value) {
+        if (value.isNotEmpty && mounted) {
+          _handleSharedFiles(value.map((f) => f.value!).toList());
+        }
+      },
+      onError: (err) {
+        debugPrint("getIntentDataStream error: $err");
+      },
+    );
+
+    // Get initial share intent
+    FlutterSharingIntent.instance.getInitialSharing().then((
+      List<SharedFile> value,
+    ) {
+      if (value.isNotEmpty && mounted) {
+        _handleSharedFiles(value.map((f) => f.value!).toList());
+      }
+    });
+  }
+
+  void _handleSharedFiles(List<String> files) {
+    if (files.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => SharedPeerSheet(
+        state: widget.state,
+        peers: _peers,
+        files: files,
+        onSent: () {
+          // Callback after sending started (and before minimize)
+        },
+      ),
+    );
   }
 
   Future<void> _selectTargetDirectory() async {
@@ -316,6 +402,7 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
               state: widget.state,
               peers: _peers,
               downloadProgress: _downloadProgress,
+              connQuality: _connQuality,
             ),
             PairingTab(
               state: widget.state,
@@ -323,13 +410,7 @@ class _HomePageState extends State<HomePage> with TrayListener, WindowListener {
               onPeersUpdated: () async {
                 final newPeers = await widget.state.peers();
                 if (mounted) setState(() => _peers = newPeers);
-                _showSnackBar(
-                  "Successfully paired!",
-                ); // Move success message here or keep in dialog?
-                // In original code success snackbar was after process.
-                // PairingDialog handles success UI internally, but we might want snackbar too.
-                // Original: _showSnackBar("Successfully paired!", isError: false);
-                // I'll leave snackbar here for consistency.
+                _showSnackBar("Successfully paired!");
               },
             ),
           ],

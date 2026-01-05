@@ -755,12 +755,13 @@ extension PairingResponsePatterns on PairingResponse {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( PairingResponse_Success value)?  success,TResult Function( PairingResponse_WrongCode value)?  wrongCode,TResult Function( PairingResponse_Error value)?  error,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( PairingResponse_Success value)?  success,TResult Function( PairingResponse_WrongCode value)?  wrongCode,TResult Function( PairingResponse_WrongSecret value)?  wrongSecret,TResult Function( PairingResponse_Error value)?  error,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case PairingResponse_Success() when success != null:
 return success(_that);case PairingResponse_WrongCode() when wrongCode != null:
-return wrongCode(_that);case PairingResponse_Error() when error != null:
+return wrongCode(_that);case PairingResponse_WrongSecret() when wrongSecret != null:
+return wrongSecret(_that);case PairingResponse_Error() when error != null:
 return error(_that);case _:
   return orElse();
 
@@ -779,12 +780,13 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( PairingResponse_Success value)  success,required TResult Function( PairingResponse_WrongCode value)  wrongCode,required TResult Function( PairingResponse_Error value)  error,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( PairingResponse_Success value)  success,required TResult Function( PairingResponse_WrongCode value)  wrongCode,required TResult Function( PairingResponse_WrongSecret value)  wrongSecret,required TResult Function( PairingResponse_Error value)  error,}){
 final _that = this;
 switch (_that) {
 case PairingResponse_Success():
 return success(_that);case PairingResponse_WrongCode():
-return wrongCode(_that);case PairingResponse_Error():
+return wrongCode(_that);case PairingResponse_WrongSecret():
+return wrongSecret(_that);case PairingResponse_Error():
 return error(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
@@ -799,12 +801,13 @@ return error(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( PairingResponse_Success value)?  success,TResult? Function( PairingResponse_WrongCode value)?  wrongCode,TResult? Function( PairingResponse_Error value)?  error,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( PairingResponse_Success value)?  success,TResult? Function( PairingResponse_WrongCode value)?  wrongCode,TResult? Function( PairingResponse_WrongSecret value)?  wrongSecret,TResult? Function( PairingResponse_Error value)?  error,}){
 final _that = this;
 switch (_that) {
 case PairingResponse_Success() when success != null:
 return success(_that);case PairingResponse_WrongCode() when wrongCode != null:
-return wrongCode(_that);case PairingResponse_Error() when error != null:
+return wrongCode(_that);case PairingResponse_WrongSecret() when wrongSecret != null:
+return wrongSecret(_that);case PairingResponse_Error() when error != null:
 return error(_that);case _:
   return null;
 
@@ -822,11 +825,12 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  success,TResult Function()?  wrongCode,TResult Function( String field0)?  error,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  success,TResult Function()?  wrongCode,TResult Function()?  wrongSecret,TResult Function( String field0)?  error,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case PairingResponse_Success() when success != null:
 return success();case PairingResponse_WrongCode() when wrongCode != null:
-return wrongCode();case PairingResponse_Error() when error != null:
+return wrongCode();case PairingResponse_WrongSecret() when wrongSecret != null:
+return wrongSecret();case PairingResponse_Error() when error != null:
 return error(_that.field0);case _:
   return orElse();
 
@@ -845,11 +849,12 @@ return error(_that.field0);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  success,required TResult Function()  wrongCode,required TResult Function( String field0)  error,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  success,required TResult Function()  wrongCode,required TResult Function()  wrongSecret,required TResult Function( String field0)  error,}) {final _that = this;
 switch (_that) {
 case PairingResponse_Success():
 return success();case PairingResponse_WrongCode():
-return wrongCode();case PairingResponse_Error():
+return wrongCode();case PairingResponse_WrongSecret():
+return wrongSecret();case PairingResponse_Error():
 return error(_that.field0);}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -864,11 +869,12 @@ return error(_that.field0);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  success,TResult? Function()?  wrongCode,TResult? Function( String field0)?  error,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  success,TResult? Function()?  wrongCode,TResult? Function()?  wrongSecret,TResult? Function( String field0)?  error,}) {final _that = this;
 switch (_that) {
 case PairingResponse_Success() when success != null:
 return success();case PairingResponse_WrongCode() when wrongCode != null:
-return wrongCode();case PairingResponse_Error() when error != null:
+return wrongCode();case PairingResponse_WrongSecret() when wrongSecret != null:
+return wrongSecret();case PairingResponse_Error() when error != null:
 return error(_that.field0);case _:
   return null;
 
@@ -933,6 +939,38 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
   return 'PairingResponse.wrongCode()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class PairingResponse_WrongSecret extends PairingResponse {
+  const PairingResponse_WrongSecret(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PairingResponse_WrongSecret);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'PairingResponse.wrongSecret()';
 }
 
 

@@ -165,6 +165,13 @@ class _PairingDialogState extends State<PairingDialog> {
                 "The code entered on the other device was incorrect.";
           });
         },
+        wrongSecret: () {
+          setState(() {
+            _isLoading = false;
+            _isWrongCode = true;
+            _errorMessage = "The scanned QR code was invalid";
+          });
+        },
         error: (msg) {
           setState(() {
             _isLoading = false;

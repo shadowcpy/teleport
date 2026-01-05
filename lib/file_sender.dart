@@ -1,0 +1,65 @@
+import 'dart:io';
+import 'package:teleport/background_service.dart';
+import 'package:teleport/notifications.dart';
+import 'package:teleport/src/rust/api/teleport.dart';
+
+class FileSender {
+  static Future<void> sendFile({
+    required AppState state,
+    required String peer,
+    required String path,
+    required String name,
+    required Function(double) onProgress,
+    required Function(String) onError,
+    required Function() onDone,
+  }) async {
+    try {
+      final progress = state.sendFile(peer: peer, name: name, path: path);
+
+      progress.listen((event) {
+        event.when(
+          progress: (offset, size) {
+            double percent = 0.0;
+            if (size > BigInt.zero) {
+              percent = offset.toDouble() / size.toDouble();
+            }
+            onProgress(percent);
+
+            // Update Background Notification
+            if (Platform.isAndroid) {
+              BackgroundService().updateNotification(
+                title: "Sending $name",
+                text: "${(percent * 100).toStringAsFixed(0)}%",
+              );
+            }
+          },
+          done: () {
+            // Reset Background Notification
+            if (Platform.isAndroid) {
+              BackgroundService().updateNotification(
+                title: "Teleport is running",
+                text: "Ready to receive files",
+              );
+            }
+            // Show Local Notification
+            NotificationService().showFileSent(name);
+            onDone();
+          },
+          error: (msg) {
+            // Update Background Notification
+            if (Platform.isAndroid) {
+              BackgroundService().updateNotification(
+                title: "Send Failed",
+                text: "$name: $msg",
+              );
+            }
+            NotificationService().showError(name, "Send failed: $msg");
+            onError(msg);
+          },
+        );
+      });
+    } catch (e) {
+      onError(e.toString());
+    }
+  }
+}

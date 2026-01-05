@@ -147,6 +147,30 @@ impl AppState {
             .await?;
         Ok(())
     }
+
+    pub async fn conn_quality_subscription(
+        &self,
+        stream: StreamSink<UIConnectionQualityUpdate>,
+    ) -> anyhow::Result<()> {
+        self.dispatcher
+            .tell(UIRequest::ConnQualitySubscription(stream))
+            .await?;
+        Ok(())
+    }
+}
+
+#[frb]
+pub enum UIConnectionQuality {
+    Direct,
+    Mixed,
+    Relay,
+    None,
+}
+
+#[frb]
+pub struct UIConnectionQualityUpdate {
+    pub peer: String,
+    pub quality: UIConnectionQuality,
 }
 
 #[frb]

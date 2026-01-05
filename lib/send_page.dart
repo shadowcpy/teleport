@@ -1,17 +1,20 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
+import 'package:teleport/file_sender.dart';
 
 class SendPage extends StatefulWidget {
   final AppState state;
   final List<(String, String)> peers;
   final Map<String, (BigInt, BigInt)> downloadProgress;
+  final Map<String, UIConnectionQuality> connQuality;
 
   const SendPage({
     super.key,
     required this.state,
     required this.peers,
     required this.downloadProgress,
+    required this.connQuality,
   });
 
   @override
@@ -33,39 +36,27 @@ class _SendPageState extends State<SendPage> {
     final file = result.files.first;
     if (file.path == null) throw Exception("File path is null");
 
-    final progress = widget.state.sendFile(
+    await FileSender.sendFile(
+      state: widget.state,
       peer: _selectedPeer!,
-      name: file.name,
       path: file.path!,
+      name: file.name,
+      onProgress: (percent) {
+        if (mounted) setState(() => _uploadProgress = percent);
+      },
+      onDone: () {
+        if (mounted) {
+          _showSnackBar("File sent successfully", isError: false);
+          setState(() => _uploadProgress = null);
+        }
+      },
+      onError: (msg) {
+        if (mounted) {
+          _showSnackBar("Failed to send: $msg", isError: true);
+          setState(() => _uploadProgress = null);
+        }
+      },
     );
-
-    progress.listen((event) {
-      event.when(
-        progress: (offset, size) {
-          if (mounted) {
-            setState(() {
-              // Convert BigInt to double for progress calculation
-              // Assuming size is not 0 to avoid division by zero which might happen briefly
-              if (size > BigInt.zero) {
-                _uploadProgress = offset.toDouble() / size.toDouble();
-              }
-            });
-          }
-        },
-        done: () {
-          if (mounted) {
-            _showSnackBar("File sent successfully", isError: false);
-            setState(() => _uploadProgress = null);
-          }
-        },
-        error: (msg) {
-          if (mounted) {
-            _showSnackBar("Failed to send: $msg", isError: true);
-            setState(() => _uploadProgress = null);
-          }
-        },
-      );
-    });
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -75,6 +66,39 @@ class _SendPageState extends State<SendPage> {
         backgroundColor: isError ? Colors.redAccent : null,
       ),
     );
+  }
+
+  Widget _getConnQuality(String peer) {
+    var quality = widget.connQuality[peer];
+    if (quality == null) return SizedBox();
+
+    Chip chip(Color color, String label, IconData icon) => Chip(
+      visualDensity: VisualDensity(horizontal: -4, vertical: -4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+      side: BorderSide(color: color),
+      backgroundColor: color.withValues(alpha: 0.1),
+      materialTapTargetSize: .shrinkWrap,
+      label: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      avatar: Icon(icon, color: color, size: 14),
+    );
+
+    switch (quality) {
+      case UIConnectionQuality.direct:
+        return chip(Colors.green, "Direct", Icons.bolt);
+      case UIConnectionQuality.mixed:
+        return chip(Colors.blue, "Mixed", Icons.alt_route);
+      case UIConnectionQuality.relay:
+        return chip(Colors.orange, "Relay", Icons.router);
+      case UIConnectionQuality.none:
+        return chip(Colors.red, "Disconnected", Icons.signal_cellular_off);
+    }
   }
 
   @override
@@ -111,7 +135,13 @@ class _SendPageState extends State<SendPage> {
               itemBuilder: (context, index) {
                 final peer = widget.peers[index];
                 return RadioListTile<String>(
-                  title: Text(peer.$1),
+                  title: Row(
+                    children: [
+                      Text(peer.$1),
+                      SizedBox(width: 10),
+                      _getConnQuality(peer.$2),
+                    ],
+                  ),
                   subtitle: Text(peer.$2, style: const TextStyle(fontSize: 10)),
                   value: peer.$2,
                 );
@@ -185,14 +215,3 @@ class _SendPageState extends State<SendPage> {
     );
   }
 }
-
-// Helper widget since RadioListTile doesn't support a groupValue that is managed externally well without a parent
-// Actually RadioListTile works fine, but we need to manage the group value state. The original code had a RadioGroup widget?
-// Let's check main.dart again.
-// Ah, the original code had `RadioGroup`. I need to see if it's a custom widget or if I missed it in main.dart.
-// I reviewed main.dart content in Step 27.
-// Line 368: `child: RadioGroup(`
-// Wait, `RadioGroup` is NOT a standard Flutter widget. It must be defined somewhere else or I missed it in `main.dart`.
-// Scanning `main.dart` again...
-// I don't see `class RadioGroup` in `main.dart`. It might be in another file or I missed it.
-// Let me check `lib` directory contents again.

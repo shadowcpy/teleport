@@ -14,7 +14,7 @@
   # https://devenv.sh/integrations/android/
   android = {
     enable = true;
-    platforms.version = [ "33" "36" ];
+    platforms.version = [ "33" "34" "35" "36" ];
     flutter.enable = true;
   };
 
