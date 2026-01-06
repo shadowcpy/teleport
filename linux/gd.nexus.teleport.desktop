@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Teleport
+Comment=Magical File Transfer
+Exec=gd.nexus.teleport
+Icon=gd.nexus.teleport
+Categories=Utility;
+Terminal=false
+StartupWMClass=teleport
