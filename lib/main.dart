@@ -28,7 +28,7 @@ Future<void> main() async {
 
   await NotificationService().init();
 
-  final persistentDirectory = await getApplicationDocumentsDirectory();
+  final persistentDirectory = await getApplicationSupportDirectory();
   final tempDirectory = await getApplicationCacheDirectory();
 
   final state = await AppState.init(

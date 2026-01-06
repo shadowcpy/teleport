@@ -6,13 +6,16 @@ runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.llvm20
-command: todo
+command: teleport
 finish-args:
   - --share=ipc
+  - --share=network
   - --socket=fallback-x11
   - --socket=wayland
+  - --socket=session-bus
   - --device=dri
 modules:
+  - shared-modules/libappindicator/libappindicator-gtk3-12.10.json
   - name: teleport
     buildsystem: simple
     build-options:
@@ -23,20 +26,23 @@ modules:
         aarch64:
           env:
             BUNDLE_PATH: build/linux/arm64/release/bundle
-      append-path: /usr/lib/sdk/llvm20/bin:/var/lib/flutter/bin
+      append-path: /usr/lib/sdk/llvm20/bin:/var/lib/flutter/bin:/var/lib/rustup/bin
       prepend-ld-library-path: /usr/lib/sdk/llvm20/lib
       env:
+        CARGO_HOME: /run/build/teleport/cargo
+        RUSTUP_HOME: /var/lib/rustup
         PUB_CACHE: /run/build/teleport/.pub-cache
+        CXXFLAGS: -Wno-error=deprecated-declarations
     build-commands:
       - setup-flutter.sh
-      - flutter build linux --release --no-pub
+      - flutter build linux --release --no-pub --verbose
       - install -D $BUNDLE_PATH/teleport /app/bin/teleport
       - cp -r $BUNDLE_PATH/lib /app/bin/lib
       - cp -r $BUNDLE_PATH/data /app/bin/data
     sources:
       - type: git
         url: https://github.com/shadowcpy/teleport.git
-        commit: 75d1d89586b481b7cffdd9c7fa036d84a618792b
+        commit: 1003fa3dea90dc87cdf3a8d7330b5f7eb820c40b
       - generated/sources/cargo.json
       - generated/sources/pubspec.json
     modules:

@@ -58,3 +58,4 @@ devenv.local.yaml
 .pre-commit-config.yaml
 generated
 .flatpak-builder
+repo
