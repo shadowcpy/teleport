@@ -3,7 +3,7 @@ Version=1.0
 Type=Application
 Name=Teleport
 Comment=Magical File Transfer
-Exec=gd.nexus.teleport
+Exec=flatpak run --branch=stable --arch=x86_64 --command=teleport --file-forwarding gd.nexus.teleport @@ %f @@
 Icon=gd.nexus.teleport
 Categories=Utility;
 Terminal=false

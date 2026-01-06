@@ -39,10 +39,12 @@ modules:
       - install -D $BUNDLE_PATH/teleport /app/bin/teleport
       - cp -r $BUNDLE_PATH/lib /app/bin/lib
       - cp -r $BUNDLE_PATH/data /app/bin/data
+      - install -Dm644 linux/gd.nexus.teleport.desktop /app/share/applications/gd.nexus.teleport.desktop
+      - install -Dm644 images/small_logo_teleport.png /app/share/icons/hicolor/128x128/apps/gd.nexus.teleport.png
     sources:
       - type: git
         url: https://github.com/shadowcpy/teleport.git
-        commit: 5181fad01447d5210a3e15e1391dc59d622d7d14
+        commit: 74247a0266d1af11bc62607585e7dc983615fec2
       - generated/sources/cargo.json
       - generated/sources/pubspec.json
     modules:
