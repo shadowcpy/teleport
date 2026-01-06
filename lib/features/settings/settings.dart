@@ -248,7 +248,7 @@ class _SettingsState extends State<Settings>
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
-                        'Version 1.0.0',
+                        'Version v0.1-dev',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(
                             context,

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class TeleportTheme {
-  static ThemeData light() {
-    const primary = Color(0xFF2F7B7B);
-    const secondary = Color(0xFFFF8A5B);
-    const tertiary = Color(0xFFF2C94C);
-    const surface = Color(0xFFF9F6F1);
-    const surfaceHigh = Color(0xFFEFE7DD);
-    const outline = Color(0xFFB5AFA7);
-    const onSurface = Color(0xFF1F2B2B);
+class TeleportDarkTheme {
+  static ThemeData dark() {
+    const primary = Color(0xFF63E6C6);
+    const secondary = Color(0xFFFF7AC8);
+    const tertiary = Color(0xFF7FB3FF);
+    const surface = Color(0xFF11131A);
+    const surfaceHigh = Color(0xFF1A1E2A);
+    const outline = Color(0xFF353C53);
+    const onSurface = Color(0xFFE4E9F7);
 
-    final colorScheme = const ColorScheme.light(
+    final colorScheme = const ColorScheme.dark(
       primary: primary,
       secondary: secondary,
       tertiary: tertiary,
@@ -22,24 +22,26 @@ class TeleportTheme {
     );
 
     final baseTextTheme = GoogleFonts.spaceGroteskTextTheme();
-    final textTheme = baseTextTheme.copyWith(
-      headlineMedium: baseTextTheme.headlineMedium?.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.6,
-      ),
-      titleLarge: baseTextTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.4,
-      ),
-      titleMedium: baseTextTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-      labelLarge: baseTextTheme.labelLarge?.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.2,
-      ),
-      bodyMedium: baseTextTheme.bodyMedium?.copyWith(height: 1.4),
-    );
+    final textTheme = baseTextTheme
+        .copyWith(
+          headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.6,
+          ),
+          titleLarge: baseTextTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+          ),
+          titleMedium: baseTextTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+          labelLarge: baseTextTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
+          bodyMedium: baseTextTheme.bodyMedium?.copyWith(height: 1.4),
+        )
+        .apply(bodyColor: onSurface, displayColor: onSurface);
 
     return ThemeData(
       useMaterial3: true,
@@ -68,12 +70,12 @@ class TeleportTheme {
         dividerHeight: 0,
       ),
       cardTheme: CardThemeData(
-        color: Colors.white,
+        color: colorScheme.surfaceContainerHighest,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
+          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.4)),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -95,17 +97,17 @@ class TeleportTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surface,
+        fillColor: colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.4),
+            color: colorScheme.outline.withValues(alpha: 0.5),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.4),
+            color: colorScheme.outline.withValues(alpha: 0.5),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -121,15 +123,15 @@ class TeleportTheme {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: Colors.white,
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: colorScheme.surfaceContainerHighest,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: Colors.white,
+        backgroundColor: colorScheme.surfaceContainerHighest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titleTextStyle: textTheme.titleLarge?.copyWith(
           color: colorScheme.primary,
@@ -137,7 +139,7 @@ class TeleportTheme {
         contentTextStyle: textTheme.bodyMedium,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: colorScheme.surface,
+        backgroundColor: colorScheme.surfaceContainerHighest,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         labelStyle: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
       ),

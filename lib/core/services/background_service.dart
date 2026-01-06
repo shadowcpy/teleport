@@ -48,18 +48,6 @@ class BackgroundService {
       callback: startCallback,
     );
   }
-
-  Future<void> updateNotification({
-    required String title,
-    required String text,
-  }) async {
-    if (!Platform.isAndroid) return;
-
-    await FlutterForegroundTask.updateService(
-      notificationTitle: title,
-      notificationText: text,
-    );
-  }
 }
 
 @pragma('vm:entry-point')

@@ -161,6 +161,7 @@ class _SendPageState extends State<SendPage> {
     var quality = qualityMap[peer];
     if (quality == null) return const SizedBox();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Chip chip(Color color, String label, IconData icon) => Chip(
       visualDensity: VisualDensity(horizontal: -4, vertical: -4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -177,6 +178,23 @@ class _SendPageState extends State<SendPage> {
       ),
       avatar: Icon(icon, color: color, size: 14),
     );
+
+    if (isDark) {
+      switch (quality) {
+        case UIConnectionQuality.direct:
+          return chip(const Color(0xFFFFFFFF), "Direct", Icons.bolt);
+        case UIConnectionQuality.mixed:
+          return chip(const Color(0xFF6BFFFC), "Mixed", Icons.alt_route);
+        case UIConnectionQuality.relay:
+          return chip(const Color(0xFFFF4DCE), "Relay", Icons.router);
+        case UIConnectionQuality.none:
+          return chip(
+            const Color(0xFFFF3B30),
+            "Disconnected",
+            Icons.signal_cellular_off,
+          );
+      }
+    }
 
     switch (quality) {
       case UIConnectionQuality.direct:

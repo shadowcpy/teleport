@@ -66,6 +66,19 @@ class _PairingTabState extends State<PairingTab> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 720;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final qrDecoration = isDark
+            ? null
+            : BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.35),
+                  width: 1.2,
+                ),
+              );
         final qrCard = Card(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -80,18 +93,18 @@ class _PairingTabState extends State<PairingTab> {
                   height: 220,
                   width: 220,
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.outline.withValues(alpha: 0.2),
-                    ),
-                  ),
+                  decoration: qrDecoration,
                   child: pairingInfo == null
                       ? const Center(child: CircularProgressIndicator())
-                      : PrettyQrView.data(data: pairingInfo),
+                      : PrettyQrView.data(
+                          data: pairingInfo,
+                          decoration: PrettyQrDecoration(
+                            background: Theme.of(context).colorScheme.surface,
+                            shape: PrettyQrSmoothSymbol(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 12),
                 Text(

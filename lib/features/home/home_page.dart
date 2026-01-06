@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:mime/mime.dart';
@@ -29,6 +30,8 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription? _pairingRequestSub;
   StreamSubscription? _notificationSub;
   StreamSubscription? _sharingSub;
+  bool _notificationGranted = true;
+  bool _ignoresBatteryOptimizations = true;
   static const MethodChannel _platform = MethodChannel(
     'com.example.teleport/app',
   );
@@ -38,6 +41,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _initListeners();
     _initSharing();
+    _refreshBackgroundPermissions();
   }
 
   void _initListeners() {
@@ -72,6 +76,20 @@ class _HomePageState extends State<HomePage> {
         debugPrint("sharing_sink stream error: $err");
       },
     );
+  }
+
+  Future<void> _refreshBackgroundPermissions() async {
+    if (!Platform.isAndroid) return;
+    final notificationStatus =
+        await FlutterForegroundTask.checkNotificationPermission();
+    final ignoresBattery =
+        await FlutterForegroundTask.isIgnoringBatteryOptimizations;
+    if (!mounted) return;
+    setState(() {
+      _notificationGranted =
+          notificationStatus == NotificationPermission.granted;
+      _ignoresBatteryOptimizations = ignoresBattery;
+    });
   }
 
   @override
@@ -208,6 +226,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Future<void> _openSettings() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const Settings()));
+    await _refreshBackgroundPermissions();
+  }
+
   Future<void> _openTargetDirectory(TeleportStore store) async {
     final target = store.targetDir;
     if (target == null || target == "/") return;
@@ -240,6 +265,10 @@ class _HomePageState extends State<HomePage> {
     }
 
     final hasPeers = store.peers.isNotEmpty;
+    final isBackgroundReady =
+        _notificationGranted && _ignoresBatteryOptimizations;
+    final showBackgroundWarning =
+        Platform.isAndroid && hasPeers && !isBackgroundReady;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -249,14 +278,25 @@ class _HomePageState extends State<HomePage> {
           children: [
             const Text("Teleport"),
             const SizedBox(height: 2),
-            Text(
-              hasPeers
-                  ? "Ready for background transfers"
-                  : "Pair your first device to unlock transfers",
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.6),
+            InkWell(
+              onTap: showBackgroundWarning ? _openSettings : null,
+              borderRadius: BorderRadius.circular(6),
+              child: Text(
+                showBackgroundWarning
+                    ? "Missing permissions for background service"
+                    : hasPeers
+                    ? "Ready for background transfers"
+                    : "Pair your first device to unlock transfers",
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: showBackgroundWarning
+                      ? Colors.orange.shade700
+                      : Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontWeight: showBackgroundWarning
+                      ? FontWeight.w700
+                      : FontWeight.normal,
+                ),
               ),
             ),
           ],
@@ -265,11 +305,7 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: "Settings",
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const Settings()));
-            },
+            onPressed: _openSettings,
           ),
           if (store.targetDir != null && !Platform.isAndroid)
             IconButton(

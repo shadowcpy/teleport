@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/lib.dart';
-import 'package:teleport/core/services/background_service.dart';
 import 'package:teleport/core/services/notification_service.dart';
 import 'package:teleport/features/send/file_sender.dart';
 
@@ -15,8 +14,7 @@ class TransferProgress {
   BigInt offset;
   BigInt size;
   double bytesPerSecond;
-  int _lastTimestampMs;
-  BigInt _lastOffset;
+  final Queue<_SpeedSample> _samples = Queue<_SpeedSample>();
 
   TransferProgress({
     required this.peer,
@@ -25,24 +23,44 @@ class TransferProgress {
     BigInt? size,
   }) : offset = offset ?? BigInt.zero,
        size = size ?? BigInt.zero,
-       bytesPerSecond = 0,
-       _lastTimestampMs = DateTime.now().millisecondsSinceEpoch,
-       _lastOffset = offset ?? BigInt.zero;
+       bytesPerSecond = 0 {
+    final nowMicros = DateTime.now().microsecondsSinceEpoch;
+    _samples.add(_SpeedSample(nowMicros, this.offset));
+  }
 
   void update(BigInt newOffset, BigInt newSize) {
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final deltaMs = nowMs - _lastTimestampMs;
-    if (deltaMs > 0) {
-      final deltaBytes = (newOffset - _lastOffset).toDouble();
-      if (deltaBytes >= 0) {
-        bytesPerSecond = deltaBytes / (deltaMs / 1000.0);
+    final nowMicros = DateTime.now().microsecondsSinceEpoch;
+    _samples.add(_SpeedSample(nowMicros, newOffset));
+
+    const windowMicros = 1200 * 1000;
+    final cutoffMicros = nowMicros - windowMicros;
+    while (_samples.length > 2 &&
+        _samples.first.timestampMicros < cutoffMicros) {
+      _samples.removeFirst();
+    }
+
+    if (_samples.length >= 2) {
+      final oldest = _samples.first;
+      final newest = _samples.last;
+      final deltaMicros = newest.timestampMicros - oldest.timestampMicros;
+      if (deltaMicros > 0) {
+        final deltaBytes = (newest.offset - oldest.offset).toDouble();
+        if (deltaBytes >= 0) {
+          bytesPerSecond = deltaBytes / (deltaMicros / 1000000.0);
+        }
       }
     }
+
     offset = newOffset;
     size = newSize;
-    _lastTimestampMs = nowMs;
-    _lastOffset = newOffset;
   }
+}
+
+class _SpeedSample {
+  final int timestampMicros;
+  final BigInt offset;
+
+  _SpeedSample(this.timestampMicros, this.offset);
 }
 
 class TeleportStore extends ChangeNotifier {
@@ -56,6 +74,8 @@ class TeleportStore extends ChangeNotifier {
   String? _targetDir;
   final Map<String, TransferProgress> _downloadProgress = {};
   final Map<String, TransferProgress> _uploadProgress = {};
+  final Map<String, int> _lastNotificationMs = {};
+  final Map<String, int> _lastNotificationPercent = {};
 
   // Getters
   List<(String, String)> get peers => List.unmodifiable(_peers);
@@ -139,23 +159,30 @@ class TeleportStore extends ChangeNotifier {
         notifyListeners();
 
         if (isAndroid) {
-          final percent = ((offset / size) * 100).toInt();
-          BackgroundService().updateNotification(
-            title: "Downloading ${event.fileName}",
-            text: "$percent%",
-          );
+          final percent = size == BigInt.zero
+              ? 0
+              : ((offset / size) * 100).toInt().clamp(0, 100);
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
+          if (_shouldUpdateNotification(key, percent, nowMs)) {
+            _lastNotificationMs[key] = nowMs;
+            _lastNotificationPercent[key] = percent;
+            NotificationService().showTransferProgress(
+              id: _notificationIdForKey(key),
+              title: "Downloading ${event.fileName}",
+              body: "$percent%",
+              progress: percent,
+            );
+          }
         }
       },
       done: (path, name) async {
         _downloadProgress.remove(key);
+        _lastNotificationMs.remove(key);
+        _lastNotificationPercent.remove(key);
+        NotificationService().cancelTransferProgress(
+          _notificationIdForKey(key),
+        );
         notifyListeners();
-
-        if (isAndroid) {
-          BackgroundService().updateNotification(
-            title: "Teleport is running",
-            text: "Ready to receive files",
-          );
-        }
 
         if (_targetDir != null) {
           try {
@@ -179,21 +206,37 @@ class TeleportStore extends ChangeNotifier {
       },
       error: (msg) {
         _downloadProgress.remove(key);
+        _lastNotificationMs.remove(key);
+        _lastNotificationPercent.remove(key);
+        NotificationService().cancelTransferProgress(
+          _notificationIdForKey(key),
+        );
         notifyListeners();
 
         NotificationService().showError(event.fileName, msg);
-        if (isAndroid) {
-          BackgroundService().updateNotification(
-            title: "Transfer Failed",
-            text: msg,
-          );
-        }
+
         _notificationController.add((
           name: "Error receiving ${event.fileName}: $msg",
           type: 'error',
         ));
       },
     );
+  }
+
+  bool _shouldUpdateNotification(String key, int percent, int nowMs) {
+    final lastMs = _lastNotificationMs[key] ?? 0;
+    final lastPercent = _lastNotificationPercent[key];
+    if (lastPercent == null) return true;
+    if (percent == 100) return true;
+    if (nowMs - lastMs >= 1000 && percent != lastPercent) return true;
+    if ((percent - lastPercent).abs() >= 5 && nowMs - lastMs >= 500) {
+      return true;
+    }
+    return false;
+  }
+
+  int _notificationIdForKey(String key) {
+    return key.hashCode & 0x7fffffff;
   }
 
   void _handleQualityEvent(UIConnectionQualityUpdate event) {

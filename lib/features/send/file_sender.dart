@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:teleport/core/services/background_service.dart';
 import 'package:teleport/core/services/notification_service.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 
@@ -15,6 +14,9 @@ class FileSender {
   }) async {
     try {
       final progress = state.sendFile(peer: peer, name: name, source: source);
+      int lastUpdateMs = 0;
+      int? lastPercent;
+      final progressId = _notificationIdForSend(peer, name);
 
       progress.listen((event) {
         event.when(
@@ -25,34 +27,34 @@ class FileSender {
             }
             onProgress?.call(percent, offset, size);
 
-            // Update Background Notification
             if (Platform.isAndroid) {
-              BackgroundService().updateNotification(
-                title: "Sending $name",
-                text: "${(percent * 100).toStringAsFixed(0)}%",
-              );
+              final percentInt = (percent * 100).toInt().clamp(0, 100);
+              final nowMs = DateTime.now().millisecondsSinceEpoch;
+              if (_shouldUpdateNotification(
+                lastPercent,
+                percentInt,
+                lastUpdateMs,
+                nowMs,
+              )) {
+                lastUpdateMs = nowMs;
+                lastPercent = percentInt;
+                NotificationService().showTransferProgress(
+                  id: progressId,
+                  title: "Sending $name",
+                  body: "$percentInt%",
+                  progress: percentInt,
+                );
+              }
             }
           },
           done: () {
-            // Reset Background Notification
-            if (Platform.isAndroid) {
-              BackgroundService().updateNotification(
-                title: "Teleport is running",
-                text: "Ready to receive files",
-              );
-            }
             // Show Local Notification
+            NotificationService().cancelTransferProgress(progressId);
             NotificationService().showFileSent(name);
             onDone();
           },
           error: (msg) {
-            // Update Background Notification
-            if (Platform.isAndroid) {
-              BackgroundService().updateNotification(
-                title: "Send Failed",
-                text: "$name: $msg",
-              );
-            }
+            NotificationService().cancelTransferProgress(progressId);
             NotificationService().showError(name, "Send failed: $msg");
             onError(msg);
           },
@@ -61,5 +63,24 @@ class FileSender {
     } catch (e) {
       onError(e.toString());
     }
+  }
+
+  static bool _shouldUpdateNotification(
+    int? lastPercent,
+    int percent,
+    int lastMs,
+    int nowMs,
+  ) {
+    if (lastPercent == null) return true;
+    if (percent == 100) return true;
+    if (nowMs - lastMs >= 1000 && percent != lastPercent) return true;
+    if ((percent - lastPercent).abs() >= 5 && nowMs - lastMs >= 500) {
+      return true;
+    }
+    return false;
+  }
+
+  static int _notificationIdForSend(String peer, String name) {
+    return "send:$peer/$name".hashCode & 0x7fffffff;
   }
 }

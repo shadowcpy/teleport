@@ -6,7 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:teleport/core/services/background_service.dart';
 import 'package:teleport/core/services/notification_service.dart';
 import 'package:teleport/core/services/window_manager_service.dart';
-import 'package:teleport/core/theme/teleport_theme.dart';
+import 'package:teleport/core/theme/teleport_dark_theme.dart';
+import 'package:teleport/core/theme/teleport_light_theme.dart';
 import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/features/home/home_page.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
@@ -50,7 +51,9 @@ class TeleportApp extends StatelessWidget {
       notifier: store,
       child: MaterialApp(
         title: 'Teleport',
-        theme: TeleportTheme.light(),
+        theme: TeleportLightTheme.light(),
+        darkTheme: TeleportDarkTheme.dark(),
+        themeMode: ThemeMode.system,
         home: const HomePage(),
       ),
     );

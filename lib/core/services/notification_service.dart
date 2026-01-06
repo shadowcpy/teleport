@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:mime/mime.dart';
 import 'package:open_filex/open_filex.dart';
@@ -110,5 +112,40 @@ class NotificationService {
       filename,
       platformDetails,
     );
+  }
+
+  Future<void> showTransferProgress({
+    required int id,
+    required String title,
+    required String body,
+    required int progress,
+  }) async {
+    if (!Platform.isAndroid) return;
+
+    final androidDetails = AndroidNotificationDetails(
+      'teleport_progress',
+      'Transfer Progress',
+      channelDescription: 'Progress for active transfers',
+      importance: Importance.low,
+      priority: Priority.low,
+      onlyAlertOnce: true,
+      ongoing: true,
+      showProgress: true,
+      maxProgress: 100,
+      progress: progress.clamp(0, 100),
+    );
+
+    final platformDetails = NotificationDetails(android: androidDetails);
+
+    await _flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      platformDetails,
+    );
+  }
+
+  Future<void> cancelTransferProgress(int id) async {
+    await _flutterLocalNotificationsPlugin.cancel(id);
   }
 }
