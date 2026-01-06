@@ -23,6 +23,8 @@ Future<void> main() async {
     await BackgroundService().startService();
   }
 
+  debugPrint("CALLED MAIN ---->>>");
+
   await NotificationService().init();
 
   final persistentDirectory = await getApplicationDocumentsDirectory();

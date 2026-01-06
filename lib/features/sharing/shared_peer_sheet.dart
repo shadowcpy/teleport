@@ -30,11 +30,11 @@ class SharedPeerSheet extends StatefulWidget {
 class _SharedPeerSheetState extends State<SharedPeerSheet> {
   static const platform = MethodChannel('com.example.teleport/app');
 
-  Future<void> _minimize() async {
+  Future<void> _completeShare() async {
     try {
-      await platform.invokeMethod('minimize');
+      await platform.invokeMethod('completeShare');
     } on PlatformException catch (e) {
-      debugPrint("Failed to minimize: ${e.message}");
+      debugPrint("Failed to complete share: ${e.message}");
     }
   }
 
@@ -59,7 +59,7 @@ class _SharedPeerSheetState extends State<SharedPeerSheet> {
     }
 
     // Minimize immediately after starting send
-    await _minimize();
+    await _completeShare();
   }
 
   @override

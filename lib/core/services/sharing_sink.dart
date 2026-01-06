@@ -24,7 +24,6 @@ class SharingItem {
 }
 
 class SharingSink {
-  static const _method = MethodChannel("sharing_sink/methods");
   static const _events = EventChannel("sharing_sink/events");
   static final SharingSink instance = SharingSink._internal();
 
@@ -44,21 +43,5 @@ class SharingSink {
       return const <SharingItem>[];
     });
     return _stream!;
-  }
-
-  Future<List<SharingItem>> getInitialSharing() async {
-    final data = await _method.invokeMethod("getInitialSharing");
-    if (data is List) {
-      return data
-          .whereType<Map<dynamic, dynamic>>()
-          .map(SharingItem.fromMap)
-          .where((item) => item.value.isNotEmpty)
-          .toList();
-    }
-    return const <SharingItem>[];
-  }
-
-  Future<void> reset() async {
-    await _method.invokeMethod("reset");
   }
 }

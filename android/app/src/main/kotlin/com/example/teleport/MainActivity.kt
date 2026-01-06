@@ -10,6 +10,14 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.teleport/app"
 
+    override fun getCachedEngineId(): String {
+        return TeleportApplication.ENGINE_ID
+    }
+
+    override fun shouldDestroyEngineWithHost(): Boolean {
+        return false
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -17,13 +25,13 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-        super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "minimize" -> {
-                    moveTaskToBack(true)
+                "completeShare" -> {
+                    finish()
                     result.success(null)
                 }
+
                 "openSharedFd" -> {
                     val uriString = call.argument<String>("uri")
                     if (uriString == null) {
@@ -41,6 +49,7 @@ class MainActivity : FlutterActivity() {
                         result.error("open_fd_failed", e.message, null)
                     }
                 }
+
                 else -> result.notImplemented()
             }
         }
@@ -57,5 +66,4 @@ class MainActivity : FlutterActivity() {
             return cursor.getString(nameIndex)
         }
     }
-
 }

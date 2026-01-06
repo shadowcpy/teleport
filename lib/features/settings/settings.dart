@@ -1,16 +1,22 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/core/widgets/teleport_background.dart';
+import 'package:teleport/features/settings/sections/background.dart';
+import 'package:teleport/features/settings/sections/device.dart';
+import 'package:teleport/features/settings/sections/storage.dart';
 
-class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+class Settings extends StatefulWidget {
+  const Settings({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  State<Settings> createState() => _SettingsState();
 }
 
-class _SettingsPageState extends State<SettingsPage>
+class _SettingsState extends State<Settings>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -18,6 +24,8 @@ class _SettingsPageState extends State<SettingsPage>
   String _deviceName = '';
   String? _targetDir;
   bool _isLoading = true;
+  bool _notificationGranted = true;
+  bool _ignoresBatteryOptimizations = true;
 
   @override
   void initState() {
@@ -51,6 +59,7 @@ class _SettingsPageState extends State<SettingsPage>
     try {
       final name = await store.state.getDeviceName();
       final dir = await store.state.getTargetDir();
+      await _refreshBackgroundPermissions();
 
       if (mounted) {
         setState(() {
@@ -135,6 +144,49 @@ class _SettingsPageState extends State<SettingsPage>
     }
   }
 
+  Future<void> _refreshBackgroundPermissions() async {
+    if (!Platform.isAndroid) {
+      setState(() {
+        _notificationGranted = true;
+        _ignoresBatteryOptimizations = true;
+      });
+      return;
+    }
+
+    final notificationStatus =
+        await FlutterForegroundTask.checkNotificationPermission();
+    final ignoresBattery =
+        await FlutterForegroundTask.isIgnoringBatteryOptimizations;
+    if (!mounted) return;
+    setState(() {
+      _notificationGranted =
+          notificationStatus == NotificationPermission.granted;
+      _ignoresBatteryOptimizations = ignoresBattery;
+    });
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    if (!Platform.isAndroid) return;
+    await FlutterForegroundTask.requestNotificationPermission();
+    await _refreshBackgroundPermissions();
+    if (_notificationGranted) {
+      _showSuccess('Notifications enabled');
+    }
+  }
+
+  Future<void> _requestBatteryOptimizationPermission() async {
+    if (!Platform.isAndroid) return;
+    final ignoresBattery =
+        await FlutterForegroundTask.isIgnoringBatteryOptimizations;
+    if (!ignoresBattery) {
+      await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+    }
+    await _refreshBackgroundPermissions();
+    if (_ignoresBatteryOptimizations) {
+      _showSuccess('Battery optimization disabled');
+    }
+  }
+
   void _showSuccess(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -171,33 +223,26 @@ class _SettingsPageState extends State<SettingsPage>
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   children: [
-                    _buildSection(
-                      title: 'Device',
-                      icon: Icons.phone_android,
-                      children: [
-                        _buildSettingTile(
-                          icon: Icons.computer,
-                          title: 'Device Name',
-                          subtitle: _deviceName,
-                          onTap: _editDeviceName,
-                          trailing: const Icon(Icons.edit, size: 20),
-                        ),
-                      ],
+                    DeviceSection(
+                      deviceName: _deviceName,
+                      onEditDeviceName: _editDeviceName,
                     ),
                     const SizedBox(height: 16),
-                    _buildSection(
-                      title: 'Storage',
-                      icon: Icons.folder,
-                      children: [
-                        _buildSettingTile(
-                          icon: Icons.download,
-                          title: 'Download Directory',
-                          subtitle: _targetDir ?? 'Not set',
-                          onTap: _selectDownloadDirectory,
-                          trailing: const Icon(Icons.folder_open, size: 20),
-                        ),
-                      ],
+                    StorageSection(
+                      targetDir: _targetDir,
+                      onSelectDownloadDirectory: _selectDownloadDirectory,
                     ),
+                    if (Platform.isAndroid) ...[
+                      const SizedBox(height: 16),
+                      BackgroundSection(
+                        notificationGranted: _notificationGranted,
+                        ignoresBatteryOptimizations:
+                            _ignoresBatteryOptimizations,
+                        onRequestNotifications: _requestNotificationPermission,
+                        onRequestBatteryOptimization:
+                            _requestBatteryOptimizationPermission,
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     const SizedBox(height: 28),
                     Padding(
@@ -216,90 +261,6 @@ class _SettingsPageState extends State<SettingsPage>
                 ),
               ),
       ),
-    );
-  }
-
-  Widget _buildSection({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.outline.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Column(children: children),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSettingTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    VoidCallback? onTap,
-    Widget? trailing,
-  }) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: Theme.of(
-          context,
-        ).colorScheme.primary.withValues(alpha: 0.12),
-        child: Icon(
-          icon,
-          size: 20,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(
-        subtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-        ),
-      ),
-      trailing:
-          trailing ??
-          (onTap != null
-              ? const Icon(Icons.arrow_forward_ios, size: 16)
-              : null),
-      onTap: onTap,
-      enabled: onTap != null,
     );
   }
 }

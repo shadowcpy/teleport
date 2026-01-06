@@ -6,33 +6,13 @@ import android.content.Intent
 import android.net.Uri
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.MethodChannel
 
 object SharingSink {
-    private const val SHARE_METHOD_CHANNEL = "sharing_sink/methods"
     private const val SHARE_EVENT_CHANNEL = "sharing_sink/events"
     private var sharingEventSink: EventChannel.EventSink? = null
-    private var initialSharing: List<Map<String, Any?>>? = null
     private var latestSharing: List<Map<String, Any?>>? = null
 
     fun register(flutterEngine: FlutterEngine, activity: Activity) {
-        MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            SHARE_METHOD_CHANNEL
-        ).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "getInitialSharing" -> {
-                    result.success(initialSharing)
-                    initialSharing = null
-                }
-                "reset" -> {
-                    initialSharing = null
-                    latestSharing = null
-                    result.success(null)
-                }
-                else -> result.notImplemented()
-            }
-        }
         EventChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             SHARE_EVENT_CHANNEL
@@ -71,7 +51,6 @@ object SharingSink {
         }
 
         if (items.isEmpty()) return
-        if (initial) initialSharing = items
         latestSharing = items
         sharingEventSink?.success(items)
     }

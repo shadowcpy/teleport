@@ -40,10 +40,9 @@ class BackgroundService {
       return;
     }
 
-    // Request permissions
-    await FlutterForegroundTask.requestNotificationPermission();
-
     await FlutterForegroundTask.startService(
+      serviceId: 1665,
+      serviceTypes: [ForegroundServiceTypes.remoteMessaging],
       notificationTitle: 'Teleport is running',
       notificationText: 'Ready to receive files',
       callback: startCallback,
@@ -78,7 +77,6 @@ class MyTaskHandler extends TaskHandler {
   void onRepeatEvent(DateTime timestamp) {
     // No-op
   }
-
   @override
   Future<void> onDestroy(DateTime timestamp, bool what) async {
     // No-op

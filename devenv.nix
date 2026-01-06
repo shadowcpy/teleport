@@ -6,9 +6,10 @@
       channel = "stable";
       targets = [ "wasm32-unknown-unknown" ];
     };
+    kotlin.enable = true;
   };
 
-  packages = with pkgs; [ rustup libappindicator xdg-user-dirs pkg-config ];
+  packages = with pkgs; [ rustup libappindicator kotlin-language-server xdg-user-dirs pkg-config ];
 
   # Configure adnroid development
   # https://devenv.sh/integrations/android/

@@ -9,11 +9,11 @@ import 'package:mime/mime.dart';
 import 'package:teleport/core/services/sharing_sink.dart';
 import 'package:teleport/data/state/teleport_store.dart';
 import 'package:teleport/core/widgets/teleport_background.dart';
-import 'package:teleport/features/onboarding/onboarding_page.dart';
+import 'package:teleport/features/onboarding/onboarding.dart';
 import 'package:teleport/features/pairing/incoming_pairing_sheet.dart';
 import 'package:teleport/features/pairing/pairing_tab.dart';
 import 'package:teleport/features/send/send_page.dart';
-import 'package:teleport/features/settings/settings_page.dart';
+import 'package:teleport/features/settings/settings.dart';
 import 'package:teleport/features/sharing/shared_peer_sheet.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 
@@ -72,12 +72,6 @@ class _HomePageState extends State<HomePage> {
         debugPrint("sharing_sink stream error: $err");
       },
     );
-
-    SharingSink.instance.getInitialSharing().then((items) async {
-      if (items.isNotEmpty && mounted) {
-        await _handleSharedFiles(items);
-      }
-    });
   }
 
   @override
@@ -236,7 +230,7 @@ class _HomePageState extends State<HomePage> {
     final store = TeleportScope.of(context);
 
     if (store.isOnboarding) {
-      return OnboardingPage(
+      return Onboarding(
         state: store.state,
         onComplete: () async {
           await store.refreshPeers();
@@ -274,7 +268,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.of(
                 context,
-              ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
+              ).push(MaterialPageRoute(builder: (_) => const Settings()));
             },
           ),
           if (store.targetDir != null && !Platform.isAndroid)
