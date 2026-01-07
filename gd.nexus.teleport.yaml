@@ -12,7 +12,7 @@ finish-args:
   - --share=network
   - --socket=fallback-x11
   - --socket=wayland
-  - --socket=session-bus
+  - --talk-name=org.kde.StatusNotifierWatcher
   - --device=dri
 modules:
   - shared-modules/libappindicator/libappindicator-gtk3-12.10.json
@@ -44,7 +44,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/shadowcpy/teleport.git
-        commit: dffe0918be820861d926cf0ae80ead8545478340
+        commit: e1926a7780ab7fa13040bfb84ddf2b9dc700532b
       - generated/sources/cargo.json
       - generated/sources/pubspec.json
     modules:
