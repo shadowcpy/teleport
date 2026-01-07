@@ -175,6 +175,7 @@ class _HomePageState extends State<HomePage> {
           Navigator.pop(ctx);
           try {
             await pair.react(reaction: reaction);
+            await pair.result();
 
             // Trigger refresh in store
             await store.refreshPeers();

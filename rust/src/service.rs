@@ -153,7 +153,7 @@ impl Message<BGRequest> for Dispatcher {
                 code,
                 outcome,
             } => {
-                let reaction = self.incoming_pair_started(from, name, code, outcome).await;
+                let reaction = self.incoming_pair_started(from, name, code, outcome);
                 self.active_secret = generate_secret(); // Rotate secret
                 let our_name = self.manager.name.clone();
                 BGResponse::IncomingPair { reaction, our_name }
@@ -433,7 +433,7 @@ impl Dispatcher {
         }
     }
 
-    pub async fn incoming_pair_started(
+    pub fn incoming_pair_started(
         &mut self,
         from: EndpointId,
         friendly_name: String,
@@ -586,10 +586,6 @@ pub struct PeerInfo {
     pub addr: EndpointAddr,
     pub secret: Vec<u8>,
 }
-
-// Temporary internal enum to help with the match logic, or I can just change the async block return type.
-// Actually, `action` returns `Result<PairingResponseInternal>` or similar.
-// Let's redefine `action` return type slightly.
 
 pub enum ActionRequest {
     PairWith {
