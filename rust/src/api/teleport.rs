@@ -7,18 +7,17 @@ use tracing::Level;
 use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
-    config::ConfigManager,
     frb_generated::{RustAutoOpaque, StreamSink},
     promise::{self, Promise, PromiseResolver},
     service::{
-        ActionRequest, ActionResponse, BGRequest, BGResponse, Dispatcher, DispatcherArgs, PeerInfo,
-        UIRequest, UIResponse,
+        AppSupervisor, AppSupervisorArgs, PairWithRequest, PairWithResponse, PeerInfo,
+        SendFileRequest, UIRequest, UIResponse,
     },
 };
 
 #[frb]
 pub struct AppState {
-    dispatcher: ActorRef<Dispatcher>,
+    dispatcher: ActorRef<AppSupervisor>,
 }
 
 #[frb]
@@ -26,10 +25,12 @@ impl AppState {
     pub async fn init(temp_dir: String, persistence_dir: String) -> anyhow::Result<Self> {
         let temp_dir = PathBuf::from(temp_dir);
         let persistence_dir = PathBuf::from(persistence_dir);
-        let manager = ConfigManager::get_or_init(persistence_dir).await?;
 
-        let args = DispatcherArgs { manager, temp_dir };
-        let dispatcher = Dispatcher::spawn(args);
+        let args = AppSupervisorArgs {
+            persistence_dir,
+            temp_dir,
+        };
+        let dispatcher = AppSupervisor::spawn(args);
 
         Ok(AppState { dispatcher })
     }
@@ -40,8 +41,8 @@ impl AppState {
             unreachable!()
         };
 
-        let response = self.dispatcher.ask(BGRequest::GetSecret).await?;
-        let BGResponse::Secret(secret) = response else {
+        let response = self.dispatcher.ask(UIRequest::GetSecret).await?;
+        let UIResponse::Secret(secret) = response else {
             unreachable!()
         };
 
@@ -69,15 +70,13 @@ impl AppState {
         let peer_info: PeerInfo = serde_json::from_str(&info)?;
         let response = self
             .dispatcher
-            .ask(ActionRequest::PairWith {
+            .ask(PairWithRequest {
                 peer: peer_info.addr,
                 secret: peer_info.secret,
                 pairing_code,
             })
             .await?;
-        let ActionResponse::PairWith(result) = response else {
-            unreachable!()
-        };
+        let PairWithResponse(result) = response;
         Ok(result.await)
     }
 
@@ -90,7 +89,7 @@ impl AppState {
     ) -> anyhow::Result<()> {
         let id: EndpointId = peer.parse()?;
         self.dispatcher
-            .tell(ActionRequest::SendFile {
+            .tell(SendFileRequest {
                 to: id,
                 name,
                 source,

@@ -12,10 +12,9 @@ use tracing::info;
 
 use crate::{
     api::teleport::UIPairReaction,
-    config::Peer,
     promise::init_promise,
     protocol::framed::FramedBiStream,
-    service::{BGRequest, BGResponse, Dispatcher},
+    service::{AppSupervisor, PairingReply, PairingRequest, Peer},
 };
 
 pub const ALPN: &[u8] = b"teleport/pair/0";
@@ -55,14 +54,14 @@ impl Pair {
 
 #[derive(Debug, Clone)]
 pub struct PairAcceptor {
-    pub dispatcher: ActorRef<Dispatcher>,
+    pub app: ActorRef<AppSupervisor>,
 }
 
 impl ProtocolHandler for PairAcceptor {
     async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
         let (send, recv) = connection.accept_bi().await?;
         let mut framed = FramedBiStream::new((send, recv), MAX_SIZE);
-        let dispatcher = self.dispatcher.clone();
+        let app = self.app.clone();
 
         info!("New pairing request from {}", connection.remote_id());
 
@@ -82,12 +81,12 @@ impl ProtocolHandler for PairAcceptor {
                 return;
             };
 
-            let Ok(response) = dispatcher.ask(BGRequest::ValidateSecret(secret)).await else {
+            let Ok(response) = app.ask(PairingRequest::ValidateSecret(secret)).await else {
                 connection.close(1u32.into(), b"INT_ERR");
                 return;
             };
 
-            let BGResponse::ValidationResult(valid_secret) = response else {
+            let PairingReply::ValidationResult(valid_secret) = response else {
                 unreachable!()
             };
 
@@ -102,8 +101,8 @@ impl ProtocolHandler for PairAcceptor {
 
             let (promise, resolver) = init_promise();
 
-            let response = dispatcher
-                .ask(BGRequest::IncomingPairStarted {
+            let response = app
+                .ask(PairingRequest::IncomingPairStarted {
                     from: connection.remote_id(),
                     name: peer_name.clone(),
                     code: pairing_code,
@@ -112,7 +111,7 @@ impl ProtocolHandler for PairAcceptor {
                 .await
                 .unwrap();
 
-            let BGResponse::IncomingPair { reaction, our_name } = response else {
+            let PairingReply::IncomingPair { reaction, our_name } = response else {
                 unreachable!()
             };
 
@@ -128,16 +127,15 @@ impl ProtocolHandler for PairAcceptor {
                     .send(&mut framed)
                     .await;
 
-                    dispatcher
-                        .tell(BGRequest::IncomingPairCompleted {
-                            outcome: result.map(|_| Peer {
-                                name: peer_name,
-                                id: connection.remote_id(),
-                            }),
-                            resolver,
-                        })
-                        .await
-                        .unwrap();
+                    app.tell(PairingRequest::IncomingPairCompleted {
+                        outcome: result.map(|_| Peer {
+                            name: peer_name,
+                            id: connection.remote_id(),
+                        }),
+                        resolver,
+                    })
+                    .await
+                    .unwrap();
                     let _ = connection.closed().await;
                 }
                 UIPairReaction::WrongPairingCode => {

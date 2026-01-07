@@ -20,7 +20,7 @@ use tracing::{error, info};
 
 use crate::{
     protocol::framed::FramedBiStream,
-    service::{BGRequest, BGResponse, Dispatcher},
+    service::{AppSupervisor, TransferReply, TransferRequest},
 };
 
 pub const ALPN: &[u8] = b"teleport/send/1";
@@ -119,14 +119,14 @@ impl SendError {
 
 #[derive(Debug, Clone)]
 pub struct SendAcceptor {
-    pub dispatcher: ActorRef<Dispatcher>,
+    pub app: ActorRef<AppSupervisor>,
 }
 
 impl ProtocolHandler for SendAcceptor {
     async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
         let (send, recv) = connection.accept_bi().await?;
         let mut framed = FramedBiStream::new((send, recv), MAX_MSG_SIZE);
-        let dispatcher = self.dispatcher.clone();
+        let app = self.app.clone();
         let peer_id = connection.remote_id();
 
         spawn(async move {
@@ -144,15 +144,15 @@ impl ProtocolHandler for SendAcceptor {
                     return Err(SendError::Oversize);
                 }
 
-                let response = dispatcher
-                    .ask(BGRequest::IncomingOffer {
+                let response = app
+                    .ask(TransferRequest::IncomingOffer {
                         offer: offer.clone(),
                         from: peer_id,
                     })
                     .await
                     .unwrap();
 
-                let BGResponse::IncomingOffer { download } = response else {
+                let TransferReply::IncomingOffer(download) = response else {
                     unreachable!()
                 };
 
@@ -171,14 +171,13 @@ impl ProtocolHandler for SendAcceptor {
                 let temp_file = File::create(&path).await.map_err(SendError::WriteFile)?;
                 let mut writer = BufWriter::new(temp_file);
 
-                dispatcher
-                    .tell(BGRequest::DownloadStatus(DownloadStatus {
-                        peer: peer_id,
-                        file_name: offer.name.clone(),
-                        status: FileStatus::Progress { offset: 0, size },
-                    }))
-                    .await
-                    .unwrap();
+                app.tell(TransferRequest::DownloadStatus(DownloadStatus {
+                    peer: peer_id,
+                    file_name: offer.name.clone(),
+                    status: FileStatus::Progress { offset: 0, size },
+                }))
+                .await
+                .unwrap();
 
                 let mut offset = 0u64;
 
@@ -223,14 +222,13 @@ impl ProtocolHandler for SendAcceptor {
                                 return Err(SendError::Oversize);
                             }
 
-                            dispatcher
-                                .tell(BGRequest::DownloadStatus(DownloadStatus {
-                                    peer: peer_id,
-                                    file_name: offer.name.clone(),
-                                    status: FileStatus::Progress { offset, size },
-                                }))
-                                .await
-                                .unwrap();
+                            app.tell(TransferRequest::DownloadStatus(DownloadStatus {
+                                peer: peer_id,
+                                file_name: offer.name.clone(),
+                                status: FileStatus::Progress { offset, size },
+                            }))
+                            .await
+                            .unwrap();
                         }
                     }
                 }
@@ -239,14 +237,13 @@ impl ProtocolHandler for SendAcceptor {
                 drop(writer);
 
                 info!("Download from peer {peer_id} completed");
-                dispatcher
-                    .tell(BGRequest::DownloadStatus(DownloadStatus {
-                        peer: peer_id,
-                        file_name: offer.name.clone(),
-                        status: FileStatus::Done { offer, path },
-                    }))
-                    .await
-                    .unwrap();
+                app.tell(TransferRequest::DownloadStatus(DownloadStatus {
+                    peer: peer_id,
+                    file_name: offer.name.clone(),
+                    status: FileStatus::Done { offer, path },
+                }))
+                .await
+                .unwrap();
 
                 SendResponse::Done
                     .send(&mut framed)
@@ -261,14 +258,13 @@ impl ProtocolHandler for SendAcceptor {
                 let (code, reason) = e.to_close_code();
                 connection.close(code, reason);
 
-                dispatcher
-                    .tell(BGRequest::DownloadStatus(DownloadStatus {
-                        peer: peer_id,
-                        file_name: String::new(),
-                        status: FileStatus::Error(e.to_string()),
-                    }))
-                    .await
-                    .ok();
+                app.tell(TransferRequest::DownloadStatus(DownloadStatus {
+                    peer: peer_id,
+                    file_name: String::new(),
+                    status: FileStatus::Error(e.to_string()),
+                }))
+                .await
+                .ok();
             } else {
                 let _ = connection.closed().await;
             }
