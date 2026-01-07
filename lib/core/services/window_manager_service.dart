@@ -17,7 +17,11 @@ class WindowManagerService with TrayListener, WindowListener {
 
     await windowManager.ensureInitialized();
     await windowManager.setPreventClose(true);
-    await trayManager.setIcon('images/logo_teleport.svg');
+    if (runningInSandbox()) {
+      await trayManager.setIcon('gd.nexus.teleport');
+    } else {
+      await trayManager.setIcon('images/logo_teleport.svg');
+    }
     await trayManager.setContextMenu(
       Menu(
         items: [
@@ -71,4 +75,12 @@ class WindowManagerService with TrayListener, WindowListener {
       await windowManager.focus();
     }
   }
+}
+
+/// Returns `true` if the app is running in a sandbox, eg. Flatpak, Snap, Docker, Podman.
+bool runningInSandbox() {
+  return Platform.environment.containsKey('FLATPAK_ID') ||
+      Platform.environment.containsKey('SNAP') ||
+      (Platform.environment['container']?.isNotEmpty == true) ||
+      FileSystemEntity.isFileSync('/.dockerenv');
 }
