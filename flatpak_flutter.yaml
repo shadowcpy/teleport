@@ -41,7 +41,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/shadowcpy/teleport.git
-        commit: e1926a7780ab7fa13040bfb84ddf2b9dc700532b
+        commit: b738511e2db73f049ab9774f628c2f63b350c82b
       - type: git
         url: https://github.com/flutter/flutter.git
         tag: 3.38.5
