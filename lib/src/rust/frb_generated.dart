@@ -96,7 +96,6 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<AppState> crateApiTeleportAppStateInit({
-    required String tempDir,
     required String persistenceDir,
   });
 
@@ -366,14 +365,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @override
   Future<AppState> crateApiTeleportAppStateInit({
-    required String tempDir,
     required String persistenceDir,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(tempDir, serializer);
           sse_encode_String(persistenceDir, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
@@ -388,7 +385,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiTeleportAppStateInitConstMeta,
-        argValues: [tempDir, persistenceDir],
+        argValues: [persistenceDir],
         apiImpl: this,
       ),
     );
@@ -397,7 +394,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiTeleportAppStateInitConstMeta =>
       const TaskConstMeta(
         debugName: "AppState_init",
-        argNames: ["tempDir", "persistenceDir"],
+        argNames: ["persistenceDir"],
       );
 
   @override

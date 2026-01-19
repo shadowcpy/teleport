@@ -27,13 +27,10 @@ abstract class AppState implements RustOpaqueInterface {
 
   Future<String?> getTargetDir();
 
-  static Future<AppState> init({
-    required String tempDir,
-    required String persistenceDir,
-  }) => RustLib.instance.api.crateApiTeleportAppStateInit(
-    tempDir: tempDir,
-    persistenceDir: persistenceDir,
-  );
+  static Future<AppState> init({required String persistenceDir}) => RustLib
+      .instance
+      .api
+      .crateApiTeleportAppStateInit(persistenceDir: persistenceDir);
 
   Future<PairingResponse> pairWith({
     required String info,

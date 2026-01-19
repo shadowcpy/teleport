@@ -29,12 +29,8 @@ Future<void> main() async {
   await NotificationService().init();
 
   final persistentDirectory = await getApplicationSupportDirectory();
-  final tempDirectory = await getApplicationCacheDirectory();
 
-  final state = await AppState.init(
-    persistenceDir: persistentDirectory.path,
-    tempDir: tempDirectory.path,
-  );
+  final state = await AppState.init(persistenceDir: persistentDirectory.path);
 
   final store = TeleportStore(state: state, isAndroid: Platform.isAndroid);
 

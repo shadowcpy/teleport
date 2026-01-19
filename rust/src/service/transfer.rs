@@ -30,7 +30,6 @@ pub struct TransferActor {
     config: ActorRef<ConfigManager>,
     conn_quality: ActorRef<ConnQualityActor>,
     router: Arc<Router>,
-    temp_dir: PathBuf,
     file_subscription: Option<Arc<StreamSink<InboundFileEvent>>>,
     peer_cache: HashMap<EndpointId, String>,
 }
@@ -39,7 +38,6 @@ pub struct TransferActorArgs {
     pub config: ActorRef<ConfigManager>,
     pub conn_quality: ActorRef<ConnQualityActor>,
     pub router: Arc<Router>,
-    pub temp_dir: PathBuf,
 }
 
 impl Actor for TransferActor {
@@ -51,7 +49,6 @@ impl Actor for TransferActor {
             config: args.config,
             conn_quality: args.conn_quality,
             router: args.router,
-            temp_dir: args.temp_dir,
             file_subscription: None,
             peer_cache: HashMap::new(),
         })
@@ -277,7 +274,7 @@ impl TransferActor {
         }
     }
 
-    pub async fn incoming_offer(&self, _offer: Offer, from: EndpointId) -> Result<Option<PathBuf>> {
+    pub async fn incoming_offer(&self, offer: Offer, from: EndpointId) -> Result<Option<PathBuf>> {
         // Peer Verification
         let peer_id = from;
         let response = self.config.ask(ConfigRequest::IsPeerKnown(peer_id)).await?;
@@ -289,12 +286,17 @@ impl TransferActor {
             return Ok(None);
         }
 
-        let random = blake3::hash(&rand::random::<u128>().to_be_bytes()).to_hex();
+        let response = self.config.ask(ConfigRequest::GetTargetDir).await?;
+        let ConfigReply::TargetDir(dir) = response else {
+            unreachable!()
+        };
 
-        let path = self
-            .temp_dir
-            .join(format!("recv_{}_{}", peer_id, random))
-            .with_extension("tmp");
+        let Some(dir) = dir else {
+            warn!("Target dir not set, ignoring incoming file");
+            return Ok(None);
+        };
+
+        let path = dir.join(offer.name);
 
         Ok(Some(path))
     }

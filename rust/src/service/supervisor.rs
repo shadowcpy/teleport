@@ -34,7 +34,6 @@ pub struct AppSupervisor {
 
 pub struct AppSupervisorArgs {
     pub persistence_dir: PathBuf,
-    pub temp_dir: PathBuf,
 }
 
 impl Actor for AppSupervisor {
@@ -42,10 +41,7 @@ impl Actor for AppSupervisor {
     type Error = anyhow::Error;
 
     async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
-        let AppSupervisorArgs {
-            persistence_dir,
-            temp_dir,
-        } = args;
+        let AppSupervisorArgs { persistence_dir } = args;
 
         let config = ConfigManager::spawn(ConfigManagerArgs { persistence_dir });
         let response = config.ask(ConfigRequest::GetKey).await?;
@@ -94,7 +90,6 @@ impl Actor for AppSupervisor {
             config: config.clone(),
             conn_quality: conn_quality.clone(),
             router: router.clone(),
-            temp_dir,
         });
 
         Ok(Self {

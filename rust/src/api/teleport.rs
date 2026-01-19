@@ -22,14 +22,10 @@ pub struct AppState {
 
 #[frb]
 impl AppState {
-    pub async fn init(temp_dir: String, persistence_dir: String) -> anyhow::Result<Self> {
-        let temp_dir = PathBuf::from(temp_dir);
+    pub async fn init(persistence_dir: String) -> anyhow::Result<Self> {
         let persistence_dir = PathBuf::from(persistence_dir);
 
-        let args = AppSupervisorArgs {
-            persistence_dir,
-            temp_dir,
-        };
+        let args = AppSupervisorArgs { persistence_dir };
         let dispatcher = AppSupervisor::spawn(args);
 
         Ok(AppState { dispatcher })
