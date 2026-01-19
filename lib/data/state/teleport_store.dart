@@ -184,25 +184,8 @@ class TeleportStore extends ChangeNotifier {
         );
         notifyListeners();
 
-        if (_targetDir != null) {
-          try {
-            final tempFile = File(path);
-            final destPath = "$_targetDir/$name";
-            await tempFile.copy(destPath);
-            await tempFile.delete();
-
-            NotificationService().showFileReceived(destPath, name);
-            _notificationController.add((
-              name: "Received $name",
-              type: 'success',
-            ));
-          } catch (e) {
-            _notificationController.add((
-              name: "Error saving $name: $e",
-              type: 'error',
-            ));
-          }
-        }
+        NotificationService().showFileReceived(path, name);
+        _notificationController.add((name: "Received $name", type: 'success'));
       },
       error: (msg) {
         _downloadProgress.remove(key);
