@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
-import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/state/teleport_store.dart';
 
 import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/lib.dart';

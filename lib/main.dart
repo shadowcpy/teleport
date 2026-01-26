@@ -8,7 +8,7 @@ import 'package:teleport/core/services/notification_service.dart';
 import 'package:teleport/core/services/window_manager_service.dart';
 import 'package:teleport/core/theme/teleport_dark_theme.dart';
 import 'package:teleport/core/theme/teleport_light_theme.dart';
-import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/state/teleport_store.dart';
 import 'package:teleport/features/home/home_page.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/frb_generated.dart';
@@ -23,8 +23,6 @@ Future<void> main() async {
     await BackgroundService().init();
     await BackgroundService().startService();
   }
-
-  debugPrint("CALLED MAIN ---->>>");
 
   await NotificationService().init();
 

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/state/teleport_store.dart';
 import 'package:teleport/core/widgets/teleport_background.dart';
 import 'package:teleport/features/settings/sections/background.dart';
 import 'package:teleport/features/settings/sections/device.dart';

@@ -8,7 +8,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:mime/mime.dart';
 import 'package:teleport/core/services/sharing_sink.dart';
-import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/state/teleport_store.dart';
 import 'package:teleport/core/widgets/teleport_background.dart';
 import 'package:teleport/features/onboarding/onboarding.dart';
 import 'package:teleport/features/pairing/incoming_pairing_sheet.dart';

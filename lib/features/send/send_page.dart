@@ -1,7 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/state/teleport_store.dart';
 import 'package:teleport/features/pairing/pairing_page.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 

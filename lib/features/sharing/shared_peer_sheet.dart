@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:teleport/data/state/teleport_store.dart';
+import 'package:teleport/state/teleport_store.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 
 class SharedTransfer {
@@ -28,7 +28,7 @@ class SharedPeerSheet extends StatefulWidget {
 }
 
 class _SharedPeerSheetState extends State<SharedPeerSheet> {
-  static const platform = MethodChannel('com.example.teleport/app');
+  static const platform = MethodChannel('gd.nexus.teleport/app');
 
   Future<void> _completeShare() async {
     try {
