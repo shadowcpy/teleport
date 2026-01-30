@@ -32,9 +32,7 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription? _sharingSub;
   bool _notificationGranted = true;
   bool _ignoresBatteryOptimizations = true;
-  static const MethodChannel _platform = MethodChannel(
-    'com.example.teleport/app',
-  );
+  static const MethodChannel _platform = MethodChannel('gd.nexus.teleport/app');
 
   @override
   void initState() {
@@ -261,6 +259,7 @@ class _HomePageState extends State<HomePage> {
         onComplete: () async {
           await store.refreshPeers();
           await store.setTargetDir((await store.state.getTargetDir())!);
+          await _refreshBackgroundPermissions();
         },
       );
     }

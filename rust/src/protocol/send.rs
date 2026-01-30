@@ -10,6 +10,7 @@ use iroh::{
 use iroh_quinn_proto::VarInt;
 use kameo::actor::ActorRef;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tokio::{
     fs::File,
     io::{AsyncWriteExt, BufWriter},
@@ -88,7 +89,7 @@ impl SendResponse {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Error)]
 enum SendError {
     #[error("Failed to receive request: {0}")]
     Recv(#[from] anyhow::Error),

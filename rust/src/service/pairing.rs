@@ -141,7 +141,7 @@ impl Message<PairWithRequest> for PairingActor {
                 info!("Got {response:?} from {id}");
 
                 match response {
-                    Pair::FuckOff => Ok(InternalPairingResult::Rejected),
+                    Pair::Rejected => Ok(InternalPairingResult::Rejected),
                     Pair::NiceToMeetYou { friendly_name } => {
                         Ok(InternalPairingResult::Success(friendly_name))
                     }

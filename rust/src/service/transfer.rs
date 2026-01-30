@@ -121,15 +121,15 @@ impl Message<SendFileRequest> for TransferActor {
 
                 let offer = Offer { name, size };
 
-                send::SendRequest::Offer(offer).send(&mut framed).await?;
+                SendRequest::Offer(offer).send(&mut framed).await?;
 
-                let response = send::SendResponse::recv(&mut framed).await?;
+                let response = SendResponse::recv(&mut framed).await?;
 
                 match response {
-                    send::SendResponse::Accept => {
+                    SendResponse::Accept => {
                         info!("Offer accepted by {peer}");
                     }
-                    send::SendResponse::Reject => {
+                    SendResponse::Reject => {
                         bail!("Offer rejected by peer");
                     }
                     _ => bail!("Unexpected response: {response:?}"),

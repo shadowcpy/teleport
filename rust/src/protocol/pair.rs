@@ -28,7 +28,7 @@ pub enum Pair {
         pairing_code: [u8; 6],
         secret: Vec<u8>,
     },
-    FuckOff,
+    Rejected,
     NiceToMeetYou {
         friendly_name: String,
     },
@@ -143,7 +143,7 @@ impl ProtocolHandler for PairAcceptor {
                     let _ = connection.closed().await;
                 }
                 UIPairReaction::Reject => {
-                    Pair::FuckOff.send(&mut framed).await.ok();
+                    Pair::Rejected.send(&mut framed).await.ok();
                     let _ = connection.closed().await;
                 }
             }
