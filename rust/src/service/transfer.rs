@@ -112,7 +112,10 @@ impl Message<SendFileRequest> for TransferActor {
                 let conn = router.endpoint().connect(peer, send::ALPN).await?;
 
                 conn_quality
-                    .tell(ConnQualityRequest::StartTracking(peer))
+                    .tell(ConnQualityRequest::StartTracking {
+                        peer,
+                        conn_info: conn.to_info(),
+                    })
                     .await
                     .unwrap();
 

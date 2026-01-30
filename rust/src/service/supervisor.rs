@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 use anyhow::Result;
 use iroh::{
     EndpointAddr,
-    endpoint::{Builder, presets},
+    endpoint::{Builder, QuicTransportConfig, presets},
     protocol::Router,
 };
 use iroh_quinn_proto::TransportConfig;
@@ -48,14 +48,14 @@ impl Actor for AppSupervisor {
         let ConfigReply::Key(key) = response else {
             unreachable!()
         };
-        let mut transport_config = TransportConfig::default();
+        let mut transport_config = QuicTransportConfig::builder();
         if cfg!(target_os = "android") {
-            transport_config.enable_segmentation_offload(false);
+            transport_config = transport_config.enable_segmentation_offload(false);
         }
 
         let endpoint = Builder::new(presets::N0)
             .secret_key(key)
-            .transport_config(transport_config)
+            .transport_config(transport_config.build())
             .bind()
             .await?;
 

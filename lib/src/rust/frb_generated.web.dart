@@ -100,6 +100,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  BigInt dco_decode_U128(dynamic raw);
+
+  @protected
   InboundPair dco_decode_box_autoadd_inbound_pair(dynamic raw);
 
   @protected
@@ -231,6 +234,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  BigInt sse_decode_U128(SseDeserializer deserializer);
 
   @protected
   InboundPair sse_decode_box_autoadd_inbound_pair(SseDeserializer deserializer);
@@ -393,6 +399,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_U128(BigInt self, SseSerializer serializer);
 
   @protected
   void sse_encode_box_autoadd_inbound_pair(

@@ -179,32 +179,25 @@ class _SendPageState extends State<SendPage> {
       avatar: Icon(icon, color: color, size: 14),
     );
 
-    if (isDark) {
-      switch (quality) {
-        case UIConnectionQuality.direct:
-          return chip(const Color(0xFFFFFFFF), "Direct", Icons.bolt);
-        case UIConnectionQuality.mixed:
-          return chip(const Color(0xFF6BFFFC), "Mixed", Icons.alt_route);
-        case UIConnectionQuality.relay:
-          return chip(const Color(0xFFFF4DCE), "Relay", Icons.router);
-        case UIConnectionQuality.none:
-          return chip(
-            const Color(0xFFFF3B30),
-            "Disconnected",
-            Icons.signal_cellular_off,
-          );
-      }
-    }
-
     switch (quality) {
-      case UIConnectionQuality.direct:
-        return chip(Colors.green, "Direct", Icons.bolt);
-      case UIConnectionQuality.mixed:
-        return chip(Colors.blue, "Mixed", Icons.alt_route);
-      case UIConnectionQuality.relay:
-        return chip(Colors.orange, "Relay", Icons.router);
-      case UIConnectionQuality.none:
-        return chip(Colors.red, "Disconnected", Icons.signal_cellular_off);
+      case UIConnectionQuality_Direct(latency: var latency):
+        return chip(
+          isDark ? const Color(0xFFFFFFFF) : Colors.green,
+          "Direct ($latency ms)",
+          Icons.bolt,
+        );
+      case UIConnectionQuality_Relay(latency: var latency):
+        return chip(
+          isDark ? const Color(0xFFFF4DCE) : Colors.orange,
+          "Relay ($latency ms)",
+          Icons.router,
+        );
+      case UIConnectionQuality_None():
+        return chip(
+          isDark ? const Color(0xFFFF3B30) : Colors.red,
+          "Disconnected",
+          Icons.signal_cellular_off,
+        );
     }
   }
 

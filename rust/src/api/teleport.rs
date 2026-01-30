@@ -155,9 +155,8 @@ impl AppState {
 
 #[frb]
 pub enum UIConnectionQuality {
-    Direct,
-    Mixed,
-    Relay,
+    Direct { latency: u128 },
+    Relay { latency: u128 },
     None,
 }
 

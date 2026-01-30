@@ -168,7 +168,16 @@ sealed class SendFileSource with _$SendFileSource {
   const factory SendFileSource.fd(int field0) = SendFileSource_Fd;
 }
 
-enum UIConnectionQuality { direct, mixed, relay, none }
+@freezed
+sealed class UIConnectionQuality with _$UIConnectionQuality {
+  const UIConnectionQuality._();
+
+  const factory UIConnectionQuality.direct({required BigInt latency}) =
+      UIConnectionQuality_Direct;
+  const factory UIConnectionQuality.relay({required BigInt latency}) =
+      UIConnectionQuality_Relay;
+  const factory UIConnectionQuality.none() = UIConnectionQuality_None;
+}
 
 class UIConnectionQualityUpdate {
   final String peer;

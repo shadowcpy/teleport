@@ -1,9 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use flutter_rust_bridge::JoinHandle;
 use futures_util::StreamExt;
-use iroh::{EndpointId, Watcher, endpoint::ConnectionType, protocol::Router};
+use iroh::{EndpointId, Watcher, endpoint::ConnectionInfo, protocol::Router};
 use kameo::prelude::*;
 use tokio::spawn;
 
@@ -37,12 +37,22 @@ impl Actor for ConnQualityActor {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ConnQuality {
+    Direct(Duration),
+    Relay(Duration),
+    None,
+}
+
 pub enum ConnQualityRequest {
     Subscription(StreamSink<UIConnectionQualityUpdate>),
-    StartTracking(EndpointId),
+    StartTracking {
+        peer: EndpointId,
+        conn_info: ConnectionInfo,
+    },
     ConnectionQualityUpdate {
         peer: EndpointId,
-        update: ConnectionType,
+        update: ConnQuality,
     },
 }
 
@@ -64,17 +74,23 @@ impl Message<ConnQualityRequest> for ConnQualityActor {
                 self.subscription = Some(sub);
                 ConnQualityReply::Ack
             }
-            ConnQualityRequest::StartTracking(peer) => {
+            ConnQualityRequest::StartTracking { peer, conn_info } => {
                 if self.tasks.contains_key(&peer) {
                     return ConnQualityReply::Ack;
                 }
-                let Some(watcher) = self.router.endpoint().conn_type(peer) else {
-                    return ConnQualityReply::Ack;
-                };
+                let watcher = conn_info.paths();
                 let this = self.this.clone();
                 let handle = spawn(async move {
                     let mut stream = watcher.stream();
                     while let Some(update) = stream.next().await {
+                        let selected = update.iter().find(|p| p.is_selected());
+                        let update = match selected {
+                            Some(path) => match path.is_ip() {
+                                true => ConnQuality::Direct(path.rtt()),
+                                false => ConnQuality::Relay(path.rtt()),
+                            },
+                            None => ConnQuality::None,
+                        };
                         this.tell(ConnQualityRequest::ConnectionQualityUpdate { peer, update })
                             .await
                             .unwrap();
@@ -86,10 +102,13 @@ impl Message<ConnQualityRequest> for ConnQualityActor {
             ConnQualityRequest::ConnectionQualityUpdate { peer, update } => {
                 if let Some(ref ui) = self.subscription {
                     let quality = match update {
-                        ConnectionType::Direct(_) => UIConnectionQuality::Direct,
-                        ConnectionType::Relay(_) => UIConnectionQuality::Relay,
-                        ConnectionType::Mixed(_, _) => UIConnectionQuality::Mixed,
-                        ConnectionType::None => UIConnectionQuality::None,
+                        ConnQuality::Direct(latency) => UIConnectionQuality::Direct {
+                            latency: latency.as_millis(),
+                        },
+                        ConnQuality::Relay(latency) => UIConnectionQuality::Relay {
+                            latency: latency.as_millis(),
+                        },
+                        ConnQuality::None => UIConnectionQuality::None,
                     };
                     ui.add(UIConnectionQualityUpdate {
                         peer: peer.to_string(),

@@ -28,7 +28,7 @@ class NotificationService {
         );
 
     await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         if (details.payload != null) {
           final path = details.payload!;
@@ -56,10 +56,10 @@ class NotificationService {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecond, // Unique ID
-      'File Received',
-      filename,
-      platformDetails,
+      id: DateTime.now().millisecond, // Unique ID
+      title: 'File Received',
+      body: filename,
+      notificationDetails: platformDetails,
       payload: path,
     );
   }
@@ -82,10 +82,10 @@ class NotificationService {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecond, // Unique ID
-      'Transfer Failed',
-      '$filename: $errorMessage',
-      platformDetails,
+      id: DateTime.now().millisecond, // Unique ID
+      title: 'Transfer Failed',
+      body: '$filename: $errorMessage',
+      notificationDetails: platformDetails,
     );
   }
 
@@ -107,10 +107,10 @@ class NotificationService {
     );
 
     await _flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecond,
-      'File Sent',
-      filename,
-      platformDetails,
+      id: DateTime.now().millisecond,
+      title: 'File Sent',
+      body: filename,
+      notificationDetails: platformDetails,
     );
   }
 
@@ -138,14 +138,14 @@ class NotificationService {
     final platformDetails = NotificationDetails(android: androidDetails);
 
     await _flutterLocalNotificationsPlugin.show(
-      id,
-      title,
-      body,
-      platformDetails,
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: platformDetails,
     );
   }
 
   Future<void> cancelTransferProgress(int id) async {
-    await _flutterLocalNotificationsPlugin.cancel(id);
+    await _flutterLocalNotificationsPlugin.cancel(id: id);
   }
 }

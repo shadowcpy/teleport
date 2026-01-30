@@ -1039,6 +1039,14 @@ impl SseDecode for String {
     }
 }
 
+impl SseDecode for u128 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <String>::sse_decode(deserializer);
+        return inner.parse().unwrap();
+    }
+}
+
 impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1255,14 +1263,27 @@ impl SseDecode for [u8; 6] {
 impl SseDecode for crate::api::teleport::UIConnectionQuality {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut inner = <i32>::sse_decode(deserializer);
-        return match inner {
-            0 => crate::api::teleport::UIConnectionQuality::Direct,
-            1 => crate::api::teleport::UIConnectionQuality::Mixed,
-            2 => crate::api::teleport::UIConnectionQuality::Relay,
-            3 => crate::api::teleport::UIConnectionQuality::None,
-            _ => unreachable!("Invalid variant for UIConnectionQuality: {}", inner),
-        };
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_latency = <u128>::sse_decode(deserializer);
+                return crate::api::teleport::UIConnectionQuality::Direct {
+                    latency: var_latency,
+                };
+            }
+            1 => {
+                let mut var_latency = <u128>::sse_decode(deserializer);
+                return crate::api::teleport::UIConnectionQuality::Relay {
+                    latency: var_latency,
+                };
+            }
+            2 => {
+                return crate::api::teleport::UIConnectionQuality::None;
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -1581,11 +1602,16 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::SendFileSource>
 impl flutter_rust_bridge::IntoDart for crate::api::teleport::UIConnectionQuality {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            Self::Direct => 0.into_dart(),
-            Self::Mixed => 1.into_dart(),
-            Self::Relay => 2.into_dart(),
-            Self::None => 3.into_dart(),
-            _ => unreachable!(),
+            crate::api::teleport::UIConnectionQuality::Direct { latency } => {
+                [0.into_dart(), latency.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::teleport::UIConnectionQuality::Relay { latency } => {
+                [1.into_dart(), latency.into_into_dart().into_dart()].into_dart()
+            }
+            crate::api::teleport::UIConnectionQuality::None => [2.into_dart()].into_dart(),
+            _ => {
+                unimplemented!("");
+            }
         }
     }
 }
@@ -1768,6 +1794,13 @@ impl SseEncode for String {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<u8>>::sse_encode(self.into_bytes(), serializer);
+    }
+}
+
+impl SseEncode for u128 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <String>::sse_encode(self.to_string(), serializer);
     }
 }
 
@@ -1958,18 +1991,22 @@ impl SseEncode for [u8; 6] {
 impl SseEncode for crate::api::teleport::UIConnectionQuality {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(
-            match self {
-                crate::api::teleport::UIConnectionQuality::Direct => 0,
-                crate::api::teleport::UIConnectionQuality::Mixed => 1,
-                crate::api::teleport::UIConnectionQuality::Relay => 2,
-                crate::api::teleport::UIConnectionQuality::None => 3,
-                _ => {
-                    unimplemented!("");
-                }
-            },
-            serializer,
-        );
+        match self {
+            crate::api::teleport::UIConnectionQuality::Direct { latency } => {
+                <i32>::sse_encode(0, serializer);
+                <u128>::sse_encode(latency, serializer);
+            }
+            crate::api::teleport::UIConnectionQuality::Relay { latency } => {
+                <i32>::sse_encode(1, serializer);
+                <u128>::sse_encode(latency, serializer);
+            }
+            crate::api::teleport::UIConnectionQuality::None => {
+                <i32>::sse_encode(2, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 

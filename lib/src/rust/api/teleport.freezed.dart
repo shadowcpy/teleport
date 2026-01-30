@@ -1337,4 +1337,334 @@ as int,
 
 }
 
+/// @nodoc
+mixin _$UIConnectionQuality {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIConnectionQuality);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'UIConnectionQuality()';
+}
+
+
+}
+
+/// @nodoc
+class $UIConnectionQualityCopyWith<$Res>  {
+$UIConnectionQualityCopyWith(UIConnectionQuality _, $Res Function(UIConnectionQuality) __);
+}
+
+
+/// Adds pattern-matching-related methods to [UIConnectionQuality].
+extension UIConnectionQualityPatterns on UIConnectionQuality {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( UIConnectionQuality_Direct value)?  direct,TResult Function( UIConnectionQuality_Relay value)?  relay,TResult Function( UIConnectionQuality_None value)?  none,required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case UIConnectionQuality_Direct() when direct != null:
+return direct(_that);case UIConnectionQuality_Relay() when relay != null:
+return relay(_that);case UIConnectionQuality_None() when none != null:
+return none(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( UIConnectionQuality_Direct value)  direct,required TResult Function( UIConnectionQuality_Relay value)  relay,required TResult Function( UIConnectionQuality_None value)  none,}){
+final _that = this;
+switch (_that) {
+case UIConnectionQuality_Direct():
+return direct(_that);case UIConnectionQuality_Relay():
+return relay(_that);case UIConnectionQuality_None():
+return none(_that);}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( UIConnectionQuality_Direct value)?  direct,TResult? Function( UIConnectionQuality_Relay value)?  relay,TResult? Function( UIConnectionQuality_None value)?  none,}){
+final _that = this;
+switch (_that) {
+case UIConnectionQuality_Direct() when direct != null:
+return direct(_that);case UIConnectionQuality_Relay() when relay != null:
+return relay(_that);case UIConnectionQuality_None() when none != null:
+return none(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt latency)?  direct,TResult Function( BigInt latency)?  relay,TResult Function()?  none,required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case UIConnectionQuality_Direct() when direct != null:
+return direct(_that.latency);case UIConnectionQuality_Relay() when relay != null:
+return relay(_that.latency);case UIConnectionQuality_None() when none != null:
+return none();case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt latency)  direct,required TResult Function( BigInt latency)  relay,required TResult Function()  none,}) {final _that = this;
+switch (_that) {
+case UIConnectionQuality_Direct():
+return direct(_that.latency);case UIConnectionQuality_Relay():
+return relay(_that.latency);case UIConnectionQuality_None():
+return none();}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt latency)?  direct,TResult? Function( BigInt latency)?  relay,TResult? Function()?  none,}) {final _that = this;
+switch (_that) {
+case UIConnectionQuality_Direct() when direct != null:
+return direct(_that.latency);case UIConnectionQuality_Relay() when relay != null:
+return relay(_that.latency);case UIConnectionQuality_None() when none != null:
+return none();case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class UIConnectionQuality_Direct extends UIConnectionQuality {
+  const UIConnectionQuality_Direct({required this.latency}): super._();
+  
+
+ final  BigInt latency;
+
+/// Create a copy of UIConnectionQuality
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UIConnectionQuality_DirectCopyWith<UIConnectionQuality_Direct> get copyWith => _$UIConnectionQuality_DirectCopyWithImpl<UIConnectionQuality_Direct>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIConnectionQuality_Direct&&(identical(other.latency, latency) || other.latency == latency));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,latency);
+
+@override
+String toString() {
+  return 'UIConnectionQuality.direct(latency: $latency)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UIConnectionQuality_DirectCopyWith<$Res> implements $UIConnectionQualityCopyWith<$Res> {
+  factory $UIConnectionQuality_DirectCopyWith(UIConnectionQuality_Direct value, $Res Function(UIConnectionQuality_Direct) _then) = _$UIConnectionQuality_DirectCopyWithImpl;
+@useResult
+$Res call({
+ BigInt latency
+});
+
+
+
+
+}
+/// @nodoc
+class _$UIConnectionQuality_DirectCopyWithImpl<$Res>
+    implements $UIConnectionQuality_DirectCopyWith<$Res> {
+  _$UIConnectionQuality_DirectCopyWithImpl(this._self, this._then);
+
+  final UIConnectionQuality_Direct _self;
+  final $Res Function(UIConnectionQuality_Direct) _then;
+
+/// Create a copy of UIConnectionQuality
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? latency = null,}) {
+  return _then(UIConnectionQuality_Direct(
+latency: null == latency ? _self.latency : latency // ignore: cast_nullable_to_non_nullable
+as BigInt,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class UIConnectionQuality_Relay extends UIConnectionQuality {
+  const UIConnectionQuality_Relay({required this.latency}): super._();
+  
+
+ final  BigInt latency;
+
+/// Create a copy of UIConnectionQuality
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$UIConnectionQuality_RelayCopyWith<UIConnectionQuality_Relay> get copyWith => _$UIConnectionQuality_RelayCopyWithImpl<UIConnectionQuality_Relay>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIConnectionQuality_Relay&&(identical(other.latency, latency) || other.latency == latency));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,latency);
+
+@override
+String toString() {
+  return 'UIConnectionQuality.relay(latency: $latency)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $UIConnectionQuality_RelayCopyWith<$Res> implements $UIConnectionQualityCopyWith<$Res> {
+  factory $UIConnectionQuality_RelayCopyWith(UIConnectionQuality_Relay value, $Res Function(UIConnectionQuality_Relay) _then) = _$UIConnectionQuality_RelayCopyWithImpl;
+@useResult
+$Res call({
+ BigInt latency
+});
+
+
+
+
+}
+/// @nodoc
+class _$UIConnectionQuality_RelayCopyWithImpl<$Res>
+    implements $UIConnectionQuality_RelayCopyWith<$Res> {
+  _$UIConnectionQuality_RelayCopyWithImpl(this._self, this._then);
+
+  final UIConnectionQuality_Relay _self;
+  final $Res Function(UIConnectionQuality_Relay) _then;
+
+/// Create a copy of UIConnectionQuality
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? latency = null,}) {
+  return _then(UIConnectionQuality_Relay(
+latency: null == latency ? _self.latency : latency // ignore: cast_nullable_to_non_nullable
+as BigInt,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class UIConnectionQuality_None extends UIConnectionQuality {
+  const UIConnectionQuality_None(): super._();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UIConnectionQuality_None);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'UIConnectionQuality.none()';
+}
+
+
+}
+
+
+
+
 // dart format on

@@ -890,6 +890,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt dco_decode_U128(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return BigInt.parse(raw);
+  }
+
+  @protected
   InboundPair dco_decode_box_autoadd_inbound_pair(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_inbound_pair(raw);
@@ -1060,7 +1066,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   UIConnectionQuality dco_decode_ui_connection_quality(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return UIConnectionQuality.values[raw as int];
+    switch (raw[0]) {
+      case 0:
+        return UIConnectionQuality_Direct(latency: dco_decode_U128(raw[1]));
+      case 1:
+        return UIConnectionQuality_Relay(latency: dco_decode_U128(raw[1]));
+      case 2:
+        return UIConnectionQuality_None();
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -1225,6 +1240,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  BigInt sse_decode_U128(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_String(deserializer);
+    return BigInt.parse(inner);
   }
 
   @protected
@@ -1436,8 +1458,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var inner = sse_decode_i_32(deserializer);
-    return UIConnectionQuality.values[inner];
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_latency = sse_decode_U128(deserializer);
+        return UIConnectionQuality_Direct(latency: var_latency);
+      case 1:
+        var var_latency = sse_decode_U128(deserializer);
+        return UIConnectionQuality_Relay(latency: var_latency);
+      case 2:
+        return UIConnectionQuality_None();
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -1649,6 +1683,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_U128(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.toString(), serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_inbound_pair(
     InboundPair self,
     SseSerializer serializer,
@@ -1841,7 +1881,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.index, serializer);
+    switch (self) {
+      case UIConnectionQuality_Direct(latency: final latency):
+        sse_encode_i_32(0, serializer);
+        sse_encode_U128(latency, serializer);
+      case UIConnectionQuality_Relay(latency: final latency):
+        sse_encode_i_32(1, serializer);
+        sse_encode_U128(latency, serializer);
+      case UIConnectionQuality_None():
+        sse_encode_i_32(2, serializer);
+    }
   }
 
   @protected
