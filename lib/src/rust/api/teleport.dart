@@ -87,6 +87,7 @@ sealed class InboundFileStatus with _$InboundFileStatus {
   const factory InboundFileStatus.progress({
     required BigInt offset,
     required BigInt size,
+    required double bytesPerSecond,
   }) = InboundFileStatus_Progress;
   const factory InboundFileStatus.done({
     required String path,
@@ -144,6 +145,7 @@ sealed class OutboundFileStatus with _$OutboundFileStatus {
   const factory OutboundFileStatus.progress({
     required BigInt offset,
     required BigInt size,
+    required double bytesPerSecond,
   }) = OutboundFileStatus_Progress;
   const factory OutboundFileStatus.done() = OutboundFileStatus_Done;
   const factory OutboundFileStatus.error(String field0) =

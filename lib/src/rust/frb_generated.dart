@@ -908,6 +908,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -935,6 +941,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return InboundFileStatus_Progress(
           offset: dco_decode_u_64(raw[1]),
           size: dco_decode_u_64(raw[2]),
+          bytesPerSecond: dco_decode_f_64(raw[3]),
         );
       case 1:
         return InboundFileStatus_Done(
@@ -995,6 +1002,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         return OutboundFileStatus_Progress(
           offset: dco_decode_u_64(raw[1]),
           size: dco_decode_u_64(raw[2]),
+          bytesPerSecond: dco_decode_f_64(raw[3]),
         );
       case 1:
         return OutboundFileStatus_Done();
@@ -1266,6 +1274,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
+  }
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
@@ -1297,7 +1311,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 0:
         var var_offset = sse_decode_u_64(deserializer);
         var var_size = sse_decode_u_64(deserializer);
-        return InboundFileStatus_Progress(offset: var_offset, size: var_size);
+        var var_bytesPerSecond = sse_decode_f_64(deserializer);
+        return InboundFileStatus_Progress(
+          offset: var_offset,
+          size: var_size,
+          bytesPerSecond: var_bytesPerSecond,
+        );
       case 1:
         var var_path = sse_decode_String(deserializer);
         var var_name = sse_decode_String(deserializer);
@@ -1376,7 +1395,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 0:
         var var_offset = sse_decode_u_64(deserializer);
         var var_size = sse_decode_u_64(deserializer);
-        return OutboundFileStatus_Progress(offset: var_offset, size: var_size);
+        var var_bytesPerSecond = sse_decode_f_64(deserializer);
+        return OutboundFileStatus_Progress(
+          offset: var_offset,
+          size: var_size,
+          bytesPerSecond: var_bytesPerSecond,
+        );
       case 1:
         return OutboundFileStatus_Done();
       case 2:
@@ -1707,6 +1731,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
+  }
+
+  @protected
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
@@ -1731,10 +1761,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case InboundFileStatus_Progress(offset: final offset, size: final size):
+      case InboundFileStatus_Progress(
+        offset: final offset,
+        size: final size,
+        bytesPerSecond: final bytesPerSecond,
+      ):
         sse_encode_i_32(0, serializer);
         sse_encode_u_64(offset, serializer);
         sse_encode_u_64(size, serializer);
+        sse_encode_f_64(bytesPerSecond, serializer);
       case InboundFileStatus_Done(path: final path, name: final name):
         sse_encode_i_32(1, serializer);
         sse_encode_String(path, serializer);
@@ -1800,10 +1835,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     switch (self) {
-      case OutboundFileStatus_Progress(offset: final offset, size: final size):
+      case OutboundFileStatus_Progress(
+        offset: final offset,
+        size: final size,
+        bytesPerSecond: final bytesPerSecond,
+      ):
         sse_encode_i_32(0, serializer);
         sse_encode_u_64(offset, serializer);
         sse_encode_u_64(size, serializer);
+        sse_encode_f_64(bytesPerSecond, serializer);
       case OutboundFileStatus_Done():
         sse_encode_i_32(1, serializer);
       case OutboundFileStatus_Error(field0: final field0):

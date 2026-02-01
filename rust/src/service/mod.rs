@@ -8,9 +8,7 @@ pub mod supervisor;
 pub mod transfer;
 
 pub use config::{ConfigManager, ConfigManagerArgs, ConfigReply, ConfigRequest, Peer};
-pub use conn_quality::{
-    ConnQualityActor, ConnQualityActorArgs, ConnQualityReply, ConnQualityRequest,
-};
+pub use conn_quality::{ConnQualityActor, ConnQualityReply, ConnQualityRequest};
 pub use pairing::{
     PairWithRequest, PairWithResponse, PairingActor, PairingActorArgs, PairingReply, PairingRequest,
 };

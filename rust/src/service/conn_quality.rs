@@ -1,9 +1,9 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, time::Duration};
 
 use anyhow::Result;
 use flutter_rust_bridge::JoinHandle;
 use futures_util::StreamExt;
-use iroh::{EndpointId, Watcher, endpoint::ConnectionInfo, protocol::Router};
+use iroh::{EndpointId, Watcher, endpoint::ConnectionInfo};
 use kameo::prelude::*;
 use tokio::spawn;
 
@@ -14,23 +14,17 @@ use crate::{
 
 pub struct ConnQualityActor {
     this: ActorRef<ConnQualityActor>,
-    router: Arc<Router>,
     subscription: Option<StreamSink<UIConnectionQualityUpdate>>,
     tasks: HashMap<EndpointId, JoinHandle<()>>,
 }
 
-pub struct ConnQualityActorArgs {
-    pub router: Arc<Router>,
-}
-
 impl Actor for ConnQualityActor {
-    type Args = ConnQualityActorArgs;
+    type Args = ();
     type Error = anyhow::Error;
 
-    async fn on_start(args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+    async fn on_start(_args: Self::Args, actor_ref: ActorRef<Self>) -> Result<Self, Self::Error> {
         Ok(Self {
             this: actor_ref,
-            router: args.router,
             subscription: None,
             tasks: HashMap::new(),
         })

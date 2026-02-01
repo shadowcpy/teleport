@@ -6,7 +6,6 @@ use iroh::{
     endpoint::{Builder, QuicTransportConfig, presets},
     protocol::Router,
 };
-use iroh_quinn_proto::TransportConfig;
 use kameo::prelude::*;
 use tracing::info;
 
@@ -19,9 +18,9 @@ use crate::{
 
 use super::{
     ConfigManager, ConfigManagerArgs, ConfigReply, ConfigRequest, ConnQualityActor,
-    ConnQualityActorArgs, ConnQualityRequest, PairWithRequest, PairWithResponse, PairingActor,
-    PairingActorArgs, PairingReply, PairingRequest, SendFileRequest, TransferActor,
-    TransferActorArgs, TransferReply, TransferRequest,
+    ConnQualityRequest, PairWithRequest, PairWithResponse, PairingActor, PairingActorArgs,
+    PairingReply, PairingRequest, SendFileRequest, TransferActor, TransferActorArgs, TransferReply,
+    TransferRequest,
 };
 
 pub struct AppSupervisor {
@@ -79,9 +78,7 @@ impl Actor for AppSupervisor {
         info!("EndpointID: {}", router.endpoint().id());
         info!("Router started");
 
-        let conn_quality = ConnQualityActor::spawn(ConnQualityActorArgs {
-            router: router.clone(),
-        });
+        let conn_quality = ConnQualityActor::spawn(());
         let pairing = PairingActor::spawn(PairingActorArgs {
             config: config.clone(),
             router: router.clone(),

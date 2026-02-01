@@ -1,4 +1,10 @@
-use std::{collections::HashMap, os::unix::io::FromRawFd, path::PathBuf, sync::Arc};
+use std::{
+    collections::{HashMap, VecDeque},
+    os::unix::io::FromRawFd,
+    path::PathBuf,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Result, bail};
 use futures_util::SinkExt;
@@ -32,6 +38,7 @@ pub struct TransferActor {
     router: Arc<Router>,
     file_subscription: Option<Arc<StreamSink<InboundFileEvent>>>,
     peer_cache: HashMap<EndpointId, String>,
+    inbound_speed: HashMap<String, SpeedTracker>,
 }
 
 pub struct TransferActorArgs {
@@ -51,7 +58,65 @@ impl Actor for TransferActor {
             router: args.router,
             file_subscription: None,
             peer_cache: HashMap::new(),
+            inbound_speed: HashMap::new(),
         })
+    }
+}
+
+const SPEED_WINDOW: Duration = Duration::from_millis(1200);
+
+struct SpeedSample {
+    timestamp: Instant,
+    offset: u64,
+}
+
+struct SpeedTracker {
+    samples: VecDeque<SpeedSample>,
+}
+
+impl SpeedTracker {
+    fn new(now: Instant, offset: u64) -> Self {
+        let mut samples = VecDeque::new();
+        samples.push_back(SpeedSample {
+            timestamp: now,
+            offset,
+        });
+        Self { samples }
+    }
+
+    fn update(&mut self, now: Instant, offset: u64) -> f64 {
+        self.samples.push_back(SpeedSample { timestamp: now, offset });
+
+        while self.samples.len() > 2 {
+            if let Some(oldest) = self.samples.front() {
+                if now.duration_since(oldest.timestamp) > SPEED_WINDOW {
+                    self.samples.pop_front();
+                    continue;
+                }
+            }
+            break;
+        }
+
+        if self.samples.len() < 2 {
+            return 0.0;
+        }
+
+        let oldest = self.samples.front().unwrap();
+        let newest = self.samples.back().unwrap();
+        let delta_secs = newest
+            .timestamp
+            .duration_since(oldest.timestamp)
+            .as_secs_f64();
+        if delta_secs <= 0.0 {
+            return 0.0;
+        }
+
+        let delta_bytes = newest.offset.saturating_sub(oldest.offset) as f64;
+        if delta_bytes <= 0.0 {
+            return 0.0;
+        }
+
+        delta_bytes / delta_secs
     }
 }
 
@@ -139,6 +204,7 @@ impl Message<SendFileRequest> for TransferActor {
                 }
 
                 let mut offset = 0u64;
+                let mut speed = SpeedTracker::new(Instant::now(), offset);
                 let mut buffer = vec![0u8; CHUNK_SIZE];
                 loop {
                     let n = reader.read(&mut buffer).await?;
@@ -159,8 +225,13 @@ impl Message<SendFileRequest> for TransferActor {
 
                     offset += n as u64;
 
-                    ui.add(OutboundFileStatus::Progress { offset, size })
-                        .unwrap();
+                    let bytes_per_second = speed.update(Instant::now(), offset);
+                    ui.add(OutboundFileStatus::Progress {
+                        offset,
+                        size,
+                        bytes_per_second,
+                    })
+                    .unwrap();
                 }
 
                 let response = SendResponse::recv(&mut framed).await?;
@@ -243,17 +314,29 @@ impl TransferActor {
         } else {
             file_event.file_name.clone()
         };
+        let speed_key = format!("{peer_id}/{file_name}");
         match file_event.status {
             FileStatus::Progress { offset, size } => {
+                let now = Instant::now();
+                let tracker = self
+                    .inbound_speed
+                    .entry(speed_key)
+                    .or_insert_with(|| SpeedTracker::new(now, offset));
+                let bytes_per_second = tracker.update(now, offset);
                 ui.add(InboundFileEvent {
                     peer: peer_id.to_string(),
                     peer_name,
                     file_name,
-                    event: InboundFileStatus::Progress { offset, size },
+                    event: InboundFileStatus::Progress {
+                        offset,
+                        size,
+                        bytes_per_second,
+                    },
                 })
                 .unwrap();
             }
             FileStatus::Done { offer, path } => {
+                self.inbound_speed.remove(&speed_key);
                 ui.add(InboundFileEvent {
                     peer: peer_id.to_string(),
                     peer_name,
@@ -266,6 +349,7 @@ impl TransferActor {
                 .unwrap();
             }
             FileStatus::Error(e) => {
+                self.inbound_speed.remove(&speed_key);
                 ui.add(InboundFileEvent {
                     peer: peer_id.to_string(),
                     peer_name,

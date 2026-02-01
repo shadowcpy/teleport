@@ -11,7 +11,7 @@
     rust = {
       enable = true;
       channel = "stable";
-      targets = [ "wasm32-unknown-unknown" ];
+      targets = [ "wasm32-unknown-unknown" "aarch64-linux-android" ];
     };
     kotlin.enable = true;
     python = {

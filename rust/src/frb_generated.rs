@@ -1047,6 +1047,13 @@ impl SseDecode for u128 {
     }
 }
 
+impl SseDecode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1078,9 +1085,11 @@ impl SseDecode for crate::api::teleport::InboundFileStatus {
             0 => {
                 let mut var_offset = <u64>::sse_decode(deserializer);
                 let mut var_size = <u64>::sse_decode(deserializer);
+                let mut var_bytesPerSecond = <f64>::sse_decode(deserializer);
                 return crate::api::teleport::InboundFileStatus::Progress {
                     offset: var_offset,
                     size: var_size,
+                    bytes_per_second: var_bytesPerSecond,
                 };
             }
             1 => {
@@ -1165,9 +1174,11 @@ impl SseDecode for crate::api::teleport::OutboundFileStatus {
             0 => {
                 let mut var_offset = <u64>::sse_decode(deserializer);
                 let mut var_size = <u64>::sse_decode(deserializer);
+                let mut var_bytesPerSecond = <f64>::sse_decode(deserializer);
                 return crate::api::teleport::OutboundFileStatus::Progress {
                     offset: var_offset,
                     size: var_size,
+                    bytes_per_second: var_bytesPerSecond,
                 };
             }
             1 => {
@@ -1457,10 +1468,15 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::InboundFileEvent>
 impl flutter_rust_bridge::IntoDart for crate::api::teleport::InboundFileStatus {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            crate::api::teleport::InboundFileStatus::Progress { offset, size } => [
+            crate::api::teleport::InboundFileStatus::Progress {
+                offset,
+                size,
+                bytes_per_second,
+            } => [
                 0.into_dart(),
                 offset.into_into_dart().into_dart(),
                 size.into_into_dart().into_dart(),
+                bytes_per_second.into_into_dart().into_dart(),
             ]
             .into_dart(),
             crate::api::teleport::InboundFileStatus::Done { path, name } => [
@@ -1517,10 +1533,15 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::teleport::InboundPair>
 impl flutter_rust_bridge::IntoDart for crate::api::teleport::OutboundFileStatus {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         match self {
-            crate::api::teleport::OutboundFileStatus::Progress { offset, size } => [
+            crate::api::teleport::OutboundFileStatus::Progress {
+                offset,
+                size,
+                bytes_per_second,
+            } => [
                 0.into_dart(),
                 offset.into_into_dart().into_dart(),
                 size.into_into_dart().into_dart(),
+                bytes_per_second.into_into_dart().into_dart(),
             ]
             .into_dart(),
             crate::api::teleport::OutboundFileStatus::Done => [1.into_dart()].into_dart(),
@@ -1804,6 +1825,13 @@ impl SseEncode for u128 {
     }
 }
 
+impl SseEncode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1825,10 +1853,15 @@ impl SseEncode for crate::api::teleport::InboundFileStatus {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::teleport::InboundFileStatus::Progress { offset, size } => {
+            crate::api::teleport::InboundFileStatus::Progress {
+                offset,
+                size,
+                bytes_per_second,
+            } => {
                 <i32>::sse_encode(0, serializer);
                 <u64>::sse_encode(offset, serializer);
                 <u64>::sse_encode(size, serializer);
+                <f64>::sse_encode(bytes_per_second, serializer);
             }
             crate::api::teleport::InboundFileStatus::Done { path, name } => {
                 <i32>::sse_encode(1, serializer);
@@ -1891,10 +1924,15 @@ impl SseEncode for crate::api::teleport::OutboundFileStatus {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         match self {
-            crate::api::teleport::OutboundFileStatus::Progress { offset, size } => {
+            crate::api::teleport::OutboundFileStatus::Progress {
+                offset,
+                size,
+                bytes_per_second,
+            } => {
                 <i32>::sse_encode(0, serializer);
                 <u64>::sse_encode(offset, serializer);
                 <u64>::sse_encode(size, serializer);
+                <f64>::sse_encode(bytes_per_second, serializer);
             }
             crate::api::teleport::OutboundFileStatus::Done => {
                 <i32>::sse_encode(1, serializer);

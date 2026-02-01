@@ -168,7 +168,11 @@ pub struct UIConnectionQualityUpdate {
 
 #[frb]
 pub enum OutboundFileStatus {
-    Progress { offset: u64, size: u64 },
+    Progress {
+        offset: u64,
+        size: u64,
+        bytes_per_second: f64,
+    },
     Done,
     Error(String),
 }
@@ -189,7 +193,11 @@ pub struct InboundFileEvent {
 
 #[frb]
 pub enum InboundFileStatus {
-    Progress { offset: u64, size: u64 },
+    Progress {
+        offset: u64,
+        size: u64,
+        bytes_per_second: f64,
+    },
     Done { path: String, name: String },
     Error(String),
 }

@@ -122,10 +122,10 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt offset,  BigInt size)?  progress,TResult Function( String path,  String name)?  done,TResult Function( String field0)?  error,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt offset,  BigInt size,  double bytesPerSecond)?  progress,TResult Function( String path,  String name)?  done,TResult Function( String field0)?  error,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case InboundFileStatus_Progress() when progress != null:
-return progress(_that.offset,_that.size);case InboundFileStatus_Done() when done != null:
+return progress(_that.offset,_that.size,_that.bytesPerSecond);case InboundFileStatus_Done() when done != null:
 return done(_that.path,_that.name);case InboundFileStatus_Error() when error != null:
 return error(_that.field0);case _:
   return orElse();
@@ -145,10 +145,10 @@ return error(_that.field0);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt offset,  BigInt size)  progress,required TResult Function( String path,  String name)  done,required TResult Function( String field0)  error,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt offset,  BigInt size,  double bytesPerSecond)  progress,required TResult Function( String path,  String name)  done,required TResult Function( String field0)  error,}) {final _that = this;
 switch (_that) {
 case InboundFileStatus_Progress():
-return progress(_that.offset,_that.size);case InboundFileStatus_Done():
+return progress(_that.offset,_that.size,_that.bytesPerSecond);case InboundFileStatus_Done():
 return done(_that.path,_that.name);case InboundFileStatus_Error():
 return error(_that.field0);}
 }
@@ -164,10 +164,10 @@ return error(_that.field0);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt offset,  BigInt size)?  progress,TResult? Function( String path,  String name)?  done,TResult? Function( String field0)?  error,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt offset,  BigInt size,  double bytesPerSecond)?  progress,TResult? Function( String path,  String name)?  done,TResult? Function( String field0)?  error,}) {final _that = this;
 switch (_that) {
 case InboundFileStatus_Progress() when progress != null:
-return progress(_that.offset,_that.size);case InboundFileStatus_Done() when done != null:
+return progress(_that.offset,_that.size,_that.bytesPerSecond);case InboundFileStatus_Done() when done != null:
 return done(_that.path,_that.name);case InboundFileStatus_Error() when error != null:
 return error(_that.field0);case _:
   return null;
@@ -181,11 +181,12 @@ return error(_that.field0);case _:
 
 
 class InboundFileStatus_Progress extends InboundFileStatus {
-  const InboundFileStatus_Progress({required this.offset, required this.size}): super._();
+  const InboundFileStatus_Progress({required this.offset, required this.size, required this.bytesPerSecond}): super._();
   
 
  final  BigInt offset;
  final  BigInt size;
+ final  double bytesPerSecond;
 
 /// Create a copy of InboundFileStatus
 /// with the given fields replaced by the non-null parameter values.
@@ -197,16 +198,16 @@ $InboundFileStatus_ProgressCopyWith<InboundFileStatus_Progress> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is InboundFileStatus_Progress&&(identical(other.offset, offset) || other.offset == offset)&&(identical(other.size, size) || other.size == size));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is InboundFileStatus_Progress&&(identical(other.offset, offset) || other.offset == offset)&&(identical(other.size, size) || other.size == size)&&(identical(other.bytesPerSecond, bytesPerSecond) || other.bytesPerSecond == bytesPerSecond));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,offset,size);
+int get hashCode => Object.hash(runtimeType,offset,size,bytesPerSecond);
 
 @override
 String toString() {
-  return 'InboundFileStatus.progress(offset: $offset, size: $size)';
+  return 'InboundFileStatus.progress(offset: $offset, size: $size, bytesPerSecond: $bytesPerSecond)';
 }
 
 
@@ -217,7 +218,7 @@ abstract mixin class $InboundFileStatus_ProgressCopyWith<$Res> implements $Inbou
   factory $InboundFileStatus_ProgressCopyWith(InboundFileStatus_Progress value, $Res Function(InboundFileStatus_Progress) _then) = _$InboundFileStatus_ProgressCopyWithImpl;
 @useResult
 $Res call({
- BigInt offset, BigInt size
+ BigInt offset, BigInt size, double bytesPerSecond
 });
 
 
@@ -234,11 +235,12 @@ class _$InboundFileStatus_ProgressCopyWithImpl<$Res>
 
 /// Create a copy of InboundFileStatus
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? offset = null,Object? size = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? offset = null,Object? size = null,Object? bytesPerSecond = null,}) {
   return _then(InboundFileStatus_Progress(
 offset: null == offset ? _self.offset : offset // ignore: cast_nullable_to_non_nullable
 as BigInt,size: null == size ? _self.size : size // ignore: cast_nullable_to_non_nullable
-as BigInt,
+as BigInt,bytesPerSecond: null == bytesPerSecond ? _self.bytesPerSecond : bytesPerSecond // ignore: cast_nullable_to_non_nullable
+as double,
   ));
 }
 
@@ -490,10 +492,10 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt offset,  BigInt size)?  progress,TResult Function()?  done,TResult Function( String field0)?  error,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( BigInt offset,  BigInt size,  double bytesPerSecond)?  progress,TResult Function()?  done,TResult Function( String field0)?  error,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case OutboundFileStatus_Progress() when progress != null:
-return progress(_that.offset,_that.size);case OutboundFileStatus_Done() when done != null:
+return progress(_that.offset,_that.size,_that.bytesPerSecond);case OutboundFileStatus_Done() when done != null:
 return done();case OutboundFileStatus_Error() when error != null:
 return error(_that.field0);case _:
   return orElse();
@@ -513,10 +515,10 @@ return error(_that.field0);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt offset,  BigInt size)  progress,required TResult Function()  done,required TResult Function( String field0)  error,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( BigInt offset,  BigInt size,  double bytesPerSecond)  progress,required TResult Function()  done,required TResult Function( String field0)  error,}) {final _that = this;
 switch (_that) {
 case OutboundFileStatus_Progress():
-return progress(_that.offset,_that.size);case OutboundFileStatus_Done():
+return progress(_that.offset,_that.size,_that.bytesPerSecond);case OutboundFileStatus_Done():
 return done();case OutboundFileStatus_Error():
 return error(_that.field0);}
 }
@@ -532,10 +534,10 @@ return error(_that.field0);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt offset,  BigInt size)?  progress,TResult? Function()?  done,TResult? Function( String field0)?  error,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( BigInt offset,  BigInt size,  double bytesPerSecond)?  progress,TResult? Function()?  done,TResult? Function( String field0)?  error,}) {final _that = this;
 switch (_that) {
 case OutboundFileStatus_Progress() when progress != null:
-return progress(_that.offset,_that.size);case OutboundFileStatus_Done() when done != null:
+return progress(_that.offset,_that.size,_that.bytesPerSecond);case OutboundFileStatus_Done() when done != null:
 return done();case OutboundFileStatus_Error() when error != null:
 return error(_that.field0);case _:
   return null;
@@ -549,11 +551,12 @@ return error(_that.field0);case _:
 
 
 class OutboundFileStatus_Progress extends OutboundFileStatus {
-  const OutboundFileStatus_Progress({required this.offset, required this.size}): super._();
+  const OutboundFileStatus_Progress({required this.offset, required this.size, required this.bytesPerSecond}): super._();
   
 
  final  BigInt offset;
  final  BigInt size;
+ final  double bytesPerSecond;
 
 /// Create a copy of OutboundFileStatus
 /// with the given fields replaced by the non-null parameter values.
@@ -565,16 +568,16 @@ $OutboundFileStatus_ProgressCopyWith<OutboundFileStatus_Progress> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OutboundFileStatus_Progress&&(identical(other.offset, offset) || other.offset == offset)&&(identical(other.size, size) || other.size == size));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OutboundFileStatus_Progress&&(identical(other.offset, offset) || other.offset == offset)&&(identical(other.size, size) || other.size == size)&&(identical(other.bytesPerSecond, bytesPerSecond) || other.bytesPerSecond == bytesPerSecond));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,offset,size);
+int get hashCode => Object.hash(runtimeType,offset,size,bytesPerSecond);
 
 @override
 String toString() {
-  return 'OutboundFileStatus.progress(offset: $offset, size: $size)';
+  return 'OutboundFileStatus.progress(offset: $offset, size: $size, bytesPerSecond: $bytesPerSecond)';
 }
 
 
@@ -585,7 +588,7 @@ abstract mixin class $OutboundFileStatus_ProgressCopyWith<$Res> implements $Outb
   factory $OutboundFileStatus_ProgressCopyWith(OutboundFileStatus_Progress value, $Res Function(OutboundFileStatus_Progress) _then) = _$OutboundFileStatus_ProgressCopyWithImpl;
 @useResult
 $Res call({
- BigInt offset, BigInt size
+ BigInt offset, BigInt size, double bytesPerSecond
 });
 
 
@@ -602,11 +605,12 @@ class _$OutboundFileStatus_ProgressCopyWithImpl<$Res>
 
 /// Create a copy of OutboundFileStatus
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? offset = null,Object? size = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? offset = null,Object? size = null,Object? bytesPerSecond = null,}) {
   return _then(OutboundFileStatus_Progress(
 offset: null == offset ? _self.offset : offset // ignore: cast_nullable_to_non_nullable
 as BigInt,size: null == size ? _self.size : size // ignore: cast_nullable_to_non_nullable
-as BigInt,
+as BigInt,bytesPerSecond: null == bytesPerSecond ? _self.bytesPerSecond : bytesPerSecond // ignore: cast_nullable_to_non_nullable
+as double,
   ));
 }
 

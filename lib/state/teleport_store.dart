@@ -13,53 +13,21 @@ class TransferProgress {
   BigInt offset;
   BigInt size;
   double bytesPerSecond;
-  final Queue<_SpeedSample> _samples = Queue<_SpeedSample>();
 
   TransferProgress({
     required this.peer,
     required this.name,
     BigInt? offset,
     BigInt? size,
+    this.bytesPerSecond = 0.0,
   }) : offset = offset ?? BigInt.zero,
-       size = size ?? BigInt.zero,
-       bytesPerSecond = 0 {
-    final nowMicros = DateTime.now().microsecondsSinceEpoch;
-    _samples.add(_SpeedSample(nowMicros, this.offset));
-  }
+       size = size ?? BigInt.zero;
 
-  void update(BigInt newOffset, BigInt newSize) {
-    final nowMicros = DateTime.now().microsecondsSinceEpoch;
-    _samples.add(_SpeedSample(nowMicros, newOffset));
-
-    const windowMicros = 1200 * 1000;
-    final cutoffMicros = nowMicros - windowMicros;
-    while (_samples.length > 2 &&
-        _samples.first.timestampMicros < cutoffMicros) {
-      _samples.removeFirst();
-    }
-
-    if (_samples.length >= 2) {
-      final oldest = _samples.first;
-      final newest = _samples.last;
-      final deltaMicros = newest.timestampMicros - oldest.timestampMicros;
-      if (deltaMicros > 0) {
-        final deltaBytes = (newest.offset - oldest.offset).toDouble();
-        if (deltaBytes >= 0) {
-          bytesPerSecond = deltaBytes / (deltaMicros / 1000000.0);
-        }
-      }
-    }
-
+  void update(BigInt newOffset, BigInt newSize, double newBytesPerSecond) {
     offset = newOffset;
     size = newSize;
+    bytesPerSecond = newBytesPerSecond;
   }
-}
-
-class _SpeedSample {
-  final int timestampMicros;
-  final BigInt offset;
-
-  _SpeedSample(this.timestampMicros, this.offset);
 }
 
 class TeleportStore extends ChangeNotifier {
@@ -149,11 +117,11 @@ class TeleportStore extends ChangeNotifier {
     final key = "${event.peer}/${event.fileName}";
 
     event.event.when(
-      progress: (offset, size) {
+      progress: (offset, size, bytesPerSecond) {
         final current =
             _downloadProgress[key] ??
             TransferProgress(peer: event.peer, name: event.fileName);
-        current.update(offset, size);
+        current.update(offset, size, bytesPerSecond);
         _downloadProgress[key] = current;
         notifyListeners();
 
@@ -278,10 +246,10 @@ class TeleportStore extends ChangeNotifier {
       peer: peer,
       name: name,
       source: source,
-      onProgress: (_, offset, size) {
+      onProgress: (_, offset, size, bytesPerSecond) {
         final current = _uploadProgress[id];
         if (current == null) return;
-        current.update(offset, size);
+        current.update(offset, size, bytesPerSecond);
         notifyListeners();
       },
       onDone: () {

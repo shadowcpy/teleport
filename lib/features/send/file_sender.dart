@@ -8,7 +8,7 @@ class FileSender {
     required String peer,
     required String name,
     required SendFileSource source,
-    Function(double, BigInt, BigInt)? onProgress,
+    Function(double, BigInt, BigInt, double)? onProgress,
     required Function(String) onError,
     required Function() onDone,
   }) async {
@@ -20,12 +20,12 @@ class FileSender {
 
       progress.listen((event) {
         event.when(
-          progress: (offset, size) {
+          progress: (offset, size, bytesPerSecond) {
             double percent = 0.0;
             if (size > BigInt.zero) {
               percent = offset.toDouble() / size.toDouble();
             }
-            onProgress?.call(percent, offset, size);
+            onProgress?.call(percent, offset, size, bytesPerSecond);
 
             if (Platform.isAndroid) {
               final percentInt = (percent * 100).toInt().clamp(0, 100);
