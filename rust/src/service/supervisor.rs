@@ -12,15 +12,15 @@ use tracing::info;
 use crate::{
     api::teleport::{InboundFileEvent, InboundPair, UIConnectionQualityUpdate},
     frb_generated::StreamSink,
-    protocol::{pair, send},
+    protocol::{keepalive, pair, send},
     service::Peer,
 };
 
 use super::{
     ConfigManager, ConfigManagerArgs, ConfigReply, ConfigRequest, ConnQualityActor,
-    ConnQualityRequest, PairWithRequest, PairWithResponse, PairingActor, PairingActorArgs,
-    PairingReply, PairingRequest, SendFileRequest, TransferActor, TransferActorArgs, TransferReply,
-    TransferRequest,
+    ConnQualityReply, ConnQualityRequest, KeepAliveActor, KeepAliveActorArgs, PairWithRequest,
+    PairWithResponse, PairingActor, PairingActorArgs, PairingReply, PairingRequest, SendFileRequest,
+    TransferActor, TransferActorArgs, TransferReply, TransferRequest,
 };
 
 pub struct AppSupervisor {
@@ -29,6 +29,7 @@ pub struct AppSupervisor {
     pairing: ActorRef<PairingActor>,
     transfer: ActorRef<TransferActor>,
     conn_quality: ActorRef<ConnQualityActor>,
+    keepalive: ActorRef<KeepAliveActor>,
 }
 
 pub struct AppSupervisorArgs {
@@ -71,6 +72,12 @@ impl Actor for AppSupervisor {
                     app: actor_ref.clone(),
                 }),
             )
+            .accept(
+                keepalive::ALPN.to_vec(),
+                Arc::new(keepalive::KeepAliveAcceptor {
+                    app: actor_ref.clone(),
+                }),
+            )
             .spawn();
 
         let router = Arc::new(router);
@@ -88,6 +95,11 @@ impl Actor for AppSupervisor {
             conn_quality: conn_quality.clone(),
             router: router.clone(),
         });
+        let keepalive = KeepAliveActor::spawn(KeepAliveActorArgs {
+            config: config.clone(),
+            conn_quality: conn_quality.clone(),
+            router: router.clone(),
+        });
 
         Ok(Self {
             router,
@@ -95,6 +107,7 @@ impl Actor for AppSupervisor {
             pairing,
             transfer,
             conn_quality,
+            keepalive,
         })
     }
 }
@@ -144,6 +157,18 @@ impl Message<TransferRequest> for AppSupervisor {
         _ctx: &mut Context<Self, Self::Reply>,
     ) -> Self::Reply {
         self.transfer.ask(msg).await.unwrap()
+    }
+}
+
+impl Message<ConnQualityRequest> for AppSupervisor {
+    type Reply = ConnQualityReply;
+
+    async fn handle(
+        &mut self,
+        msg: ConnQualityRequest,
+        _ctx: &mut Context<Self, Self::Reply>,
+    ) -> Self::Reply {
+        self.conn_quality.ask(msg).await.unwrap()
     }
 }
 
