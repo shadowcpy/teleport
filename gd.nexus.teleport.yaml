@@ -44,7 +44,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/shadowcpy/teleport.git
-        commit: 74e3bdfdd00607601992a5eb553e31b780ed695b
+        commit: c049ec96cbc439d899536823f5db30e60352f9ad
       - generated/sources/cargo.json
       - generated/sources/pubspec.json
     modules:
