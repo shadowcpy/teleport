@@ -19,8 +19,8 @@ use crate::{
 use super::{
     ConfigManager, ConfigManagerArgs, ConfigReply, ConfigRequest, ConnQualityActor,
     ConnQualityReply, ConnQualityRequest, KeepAliveActor, KeepAliveActorArgs, PairWithRequest,
-    PairWithResponse, PairingActor, PairingActorArgs, PairingReply, PairingRequest, SendFileRequest,
-    TransferActor, TransferActorArgs, TransferReply, TransferRequest,
+    PairWithResponse, PairingActor, PairingActorArgs, PairingReply, PairingRequest,
+    SendFileRequest, TransferActor, TransferActorArgs, TransferReply, TransferRequest,
 };
 
 pub struct AppSupervisor {
@@ -29,7 +29,6 @@ pub struct AppSupervisor {
     pairing: ActorRef<PairingActor>,
     transfer: ActorRef<TransferActor>,
     conn_quality: ActorRef<ConnQualityActor>,
-    keepalive: ActorRef<KeepAliveActor>,
 }
 
 pub struct AppSupervisorArgs {
@@ -95,7 +94,8 @@ impl Actor for AppSupervisor {
             conn_quality: conn_quality.clone(),
             router: router.clone(),
         });
-        let keepalive = KeepAliveActor::spawn(KeepAliveActorArgs {
+
+        KeepAliveActor::spawn(KeepAliveActorArgs {
             config: config.clone(),
             conn_quality: conn_quality.clone(),
             router: router.clone(),
@@ -107,7 +107,6 @@ impl Actor for AppSupervisor {
             pairing,
             transfer,
             conn_quality,
-            keepalive,
         })
     }
 }

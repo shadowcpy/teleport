@@ -15,80 +15,75 @@ Teleport is a localized P2P file transfer application. It uses **Flutter** for t
 ## Core Components
 
 ### 1. Rust Backend (`rust/src`)
-The backend logic is centralized around an actor-based `Dispatcher`.
+The backend logic is centralized around an actor-based architecture managed by an `AppSupervisor`.
 
-#### **Service (`service.rs`)**
--   **`Dispatcher`**: The primary actor. It manages the application lifecycle, configuration (`ConfigManager`), and active state.
--   **State Management**:
-    -   `active_secret`: A 128-byte `Vec<u8>` used for verifying pairing attempts. Rotated after every incoming pairing attempt.
-    -   `peers`: List of trusted/known peers.
--   **Message Handling**:
-    -   `ActionRequest`: Commands from the UI (e.g., `PairWith`, `SendFile`).
-    -   `BGRequest`: Internal events from protocol handlers (e.g., `IncomingPairStarted`, `ValidateSecret`).
+#### **Service Structure**
+-   **`AppSupervisor` (`service/supervisor.rs`)**: The root actor. It spawns and manages the lifecycle of child actors and routes `UIRequest`s to the appropriate actor.
+-   **`ConfigManager` (`service/config.rs`)**: Manages persistent configuration (Device Name, Target Directory, Known Peers, Keypair).
+-   **`PairingActor` (`service/pairing.rs`)**: Handles the secure pairing handshake and secret verification.
+-   **`TransferActor` (`service/transfer.rs`)**: Manages file transfers (sending and receiving). It tracks transfer speeds using a sliding window `SpeedTracker` and reports progress.
+-   **`ConnQualityActor` (`service/conn_quality.rs`)**: Monitors connection metrics (RTT, packet loss) for active connections.
+-   **`KeepAliveActor` (`service/keepalive.rs`)**: Maintains connection health ensuring NAT mappings stay open.
 
 #### **Protocols (`protocol/`)**
-Teleport defines custom protocols running over Iroh connections (QUIC streams).
+Teleport defines custom protocols running over Iroh connections (QUIC streams), identified by ALPNs.
 -   **Pairing (`pair.rs`)**:
+    -   **ALPN**: `teleport/pair`
     -   **Purpose**: Establish trust between two devices.
     -   **Handshake**: `Helo` -> `NiceToMeetYou` / `Error`.
-    -   **Security**:
-        -   **Pairing Code**: A 6-digit user-visible code for intent verification.
-        -   **Pairing Secret**: A 128-byte invisible secret (passed via QR) to prove physical proximity/scanning.
-        -   **Validation**: The `Dispatcher` verifies the incoming secret against its `active_secret`.
-    -   **Errors**: Typed errors like `WrongSecret`, `WrongPairingCode`.
+    -   **Security**: Uses a 6-digit code (intent) and a 128-byte secret (proximity via QR) to verify peers.
 -   **Send (`send.rs`)**:
+    -   **ALPN**: `teleport/send`
     -   **Purpose**: Transfer files.
-    -   **Flow**: `Offer` (Name, Size) -> `Accept` -> `Chunk` stream -> `Done`.
-    -   **Safety**: Enforces `MAX_FILE_SIZE` (20 GiB) and uses secure temporary paths (`recv_{peer}_{hash}.tmp`) to prevent path traversal.
+    -   **Flow**: `Offer` (Name, Size) -> `Accept` / `Reject` -> `Chunk` stream -> `Done`.
+    -   **Safety**: Validates peer identity before accepting. Uses temporary paths for downloads.
+-   **KeepAlive (`keepalive.rs`)**:
+    -   **ALPN**: `teleport/keepalive`
+    -   **Purpose**: Periodic pings to maintain connectivity.
 
 #### **API (`api/teleport.rs`)**
 -   **`AppState`**: The facade exposed to Dart.
--   **`PeerInfo`**: A struct `{ addr: EndpointAddr, secret: Vec<u8> }` serialized to JSON. This is what `get_addr` returns and what `pair_with` accepts, encapsulating the complexity of the connection info.
+-   **`PeerInfo`**: Struct `{ addr: EndpointAddr, secret: Vec<u8> }` for connection details.
+-   **`UIRequest` / `UIResponse`**: Enum-based message passing for frontend-backend communication.
 
 ### 2. Flutter Frontend (`lib/`)
 #### **State Management**
--   The app initializes `AppState` (Rust) and subscribes to streams:
-    -   `pairingSubscription()`: Listens for incoming pairing requests.
-    -   `fileSubscription()`: Listens for file transfer progress.
+-   **`TeleportScope` / `TeleportStore`**: Provides access to the global state and `AppState` (Rust) methods throughout the widget tree.
+-   **Subscriptions**:
+    -   `pairingSubscription`: Inbound pairing requests.
+    -   `fileSubscription`: File transfer progress and status events.
+    -   `connQualitySubscription`: Real-time connection stats.
+
+#### **Features**
+-   **Onboarding (`features/onboarding/`)**: Guided setup flow for new users (Device Name, Target Directory, Permissions).
+-   **Settings (`features/settings/`)**: Configuration for storage location, device identity, and background permissions.
+-   **Pairing (`features/pairing/`)**: QR code display/scanning and manual code entry.
+-   **Send (`features/send/`)**: File selection and transfer initiation.
 
 #### **Background Services**
--   **`BackgroundService` (`background_service.dart`)**:
-    -   Uses `flutter_foreground_task` to run a Foreground Service on Android.
-    -   Keeps the Flutter Engine (and thus the Rust FRB backend) alive when the app is minimized.
-    -   Shows a persistent notification ("Teleport is running") which updates with download progress.
--   **`NotificationService` (`notifications.dart`)**:
-    -   Uses `flutter_local_notifications`.
-    -   Displays a high-priority system notification when a file transfer is complete.
-    -   Handles "Tap to Open" actions using `open_filex`.
-
-#### **Key Widgets**
--   **`PairingTab` (`pairing.dart`)**:
-    -   Displays the QR code.
-    -   Refetches the QR code data (`getAddr`) after incoming pair events to match the rotated secret.
-    -   Handles scanning and the "Enter Code" dialog.
--   **`IncomingPairingSheet`**:
-    -   Prompts the user to accept/reject a pairing request and enter the 6-digit code.
+-   **`BackgroundService` (`core/services/background_service.dart`)**:
+    -   Uses `flutter_foreground_task` to keep the app alive on Android.
+    -   Shows a persistent notification with transfer progress.
+-   **`NotificationService` (`core/services/notification_service.dart`)**:
+    -   Uses `flutter_local_notifications` for completion alerts.
 
 ---
 
 ## Key Workflows
 
 ### Secure Pairing Flow
-1.  **Receiver (Rust)**: Initializes with a random `active_secret`.
-2.  **Receiver (UI)**: Calls `get_addr` -> gets JSON `{ addr, secret }` -> Displays QR.
-3.  **Initiator (UI)**: Scans QR -> captures JSON.
-4.  **Initiator (UI)**: User enters 6-digit code displayed on Receiver.
-5.  **Initiator (Rust)**: Calls `pair_with(json, code)`. extracts secret.
-6.  **Handshake**: Initiator sends `Helo { secret, code }` to Receiver.
-7.  **Verification**: Receiver `Dispatcher` checks:
-    -   `secret == self.active_secret`?
-    -   `code` matches? (checked via UI/Promise reaction).
-8.  **Rotation**: Receiver generates a NEW `active_secret` immediately.
-9.  **Refresh**: Receiver UI detects the event and calls `get_addr` again to show the new QR code.
+1.  **Receiver**: `AppSupervisor` routes `GetSecret` to `PairingActor`. UI displays QR with `addr` and `secret`.
+2.  **Initiator**: Scans QR, extracts `addr` and `secret`. User enters 6-digit code.
+3.  **Initiator**: connects to `addr` via `teleport/pair`, sends `Helo { secret, code }`.
+4.  **Receiver**: `PairingActor` validates `secret` matches `active_secret` and checks `code`.
+5.  **Receiver**: If valid, adds Initiator to `ConfigManager` (persisted peers) and responds `NiceToMeetYou`.
+6.  **Rotation**: Receiver rotates `active_secret` to prevent replay/reuse of the QR code.
 
 ### File Transfer Flow
-1.  **Sender**: `send_file(peer_id, path)`.
-2.  **Protocol**: Sends `Offer`.
-3.  **Receiver**: Validates if `peer_id` is a known/paired peer. If so, `Accept`.
-4.  **Transfer**: File sent in validated chunks. Progress reported to UI via StreamSink.
-5.  **Completion**: Receiver moves file from temp dir to Downloads folder.
+1.  **Sender**: UI calls `send_file`. `TransferActor` initiates connection via `teleport/send`.
+2.  **Sender**: Sends `Offer` (Name, Size).
+3.  **Receiver**: `TransferActor` checks if sender is a known peer (via `ConfigManager`).
+4.  **Receiver**: If known, checks `TargetDir`, opens file, and sends `Accept`.
+5.  **Sender**: Streams file chunks. `TransferActor` calculates speed and reports `OutboundFileStatus` to UI.
+6.  **Receiver**: Writes chunks. `TransferActor` calculates speed and reports `InboundFileStatus` to UI.
+7.  **Completion**: Sender sends `Finish`, Receiver verifies and sends `Done`.
