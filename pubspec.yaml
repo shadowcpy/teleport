@@ -48,7 +48,10 @@ dependencies:
   freezed_annotation: ^3.1.0
   flutter_foreground_task: ^9.2.0
   flutter_local_notifications: ^20.0.0
-  open_filex: ^4.5.0
+  open_filex: # Remove the useless media permissions as we don't need them
+    git:
+      url: https://github.com/shadowcpy/open_filex
+      ref: master
   mime: ^2.0.0
 
 dev_dependencies:
@@ -118,6 +121,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-dependency_overrides:
-  open_filex:
-    path: third_party/open_filex
