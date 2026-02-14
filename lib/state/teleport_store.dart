@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:teleport/src/rust/api/teleport.dart';
 import 'package:teleport/src/rust/lib.dart';
 import 'package:teleport/core/services/notification_service.dart';
-import 'package:teleport/features/send/file_sender.dart';
 
 class TransferProgress {
   final String peer;
@@ -41,8 +40,6 @@ class TeleportStore extends ChangeNotifier {
   String? _targetDir;
   final Map<String, TransferProgress> _downloadProgress = {};
   final Map<String, TransferProgress> _uploadProgress = {};
-  final Map<String, int> _lastNotificationMs = {};
-  final Map<String, int> _lastNotificationPercent = {};
 
   // Getters
   List<(String, String)> get peers => List.unmodifiable(_peers);
@@ -115,6 +112,7 @@ class TeleportStore extends ChangeNotifier {
 
   void _handleFileEvent(InboundFileEvent event) {
     final key = "${event.peer}/${event.fileName}";
+    final notificationId = key.hashCode & 0x7fffffff;
 
     event.event.when(
       progress: (offset, size, bytesPerSecond) {
@@ -129,26 +127,18 @@ class TeleportStore extends ChangeNotifier {
           final percent = size == BigInt.zero
               ? 0
               : ((offset / size) * 100).toInt().clamp(0, 100);
-          final nowMs = DateTime.now().millisecondsSinceEpoch;
-          if (_shouldUpdateNotification(key, percent, nowMs)) {
-            _lastNotificationMs[key] = nowMs;
-            _lastNotificationPercent[key] = percent;
-            NotificationService().showTransferProgress(
-              id: _notificationIdForKey(key),
-              title: "Downloading ${event.fileName}",
-              body: "$percent%",
-              progress: percent,
-            );
-          }
+
+          NotificationService().updateTransferProgress(
+            id: notificationId,
+            title: "Downloading ${event.fileName}",
+            body: "$percent%",
+            progress: percent,
+          );
         }
       },
       done: (path, name) async {
         _downloadProgress.remove(key);
-        _lastNotificationMs.remove(key);
-        _lastNotificationPercent.remove(key);
-        NotificationService().cancelTransferProgress(
-          _notificationIdForKey(key),
-        );
+        NotificationService().cancelTransferProgress(notificationId);
         notifyListeners();
 
         NotificationService().showFileReceived(path, name);
@@ -156,11 +146,7 @@ class TeleportStore extends ChangeNotifier {
       },
       error: (msg) {
         _downloadProgress.remove(key);
-        _lastNotificationMs.remove(key);
-        _lastNotificationPercent.remove(key);
-        NotificationService().cancelTransferProgress(
-          _notificationIdForKey(key),
-        );
+        NotificationService().cancelTransferProgress(notificationId);
         notifyListeners();
 
         NotificationService().showError(event.fileName, msg);
@@ -171,22 +157,6 @@ class TeleportStore extends ChangeNotifier {
         ));
       },
     );
-  }
-
-  bool _shouldUpdateNotification(String key, int percent, int nowMs) {
-    final lastMs = _lastNotificationMs[key] ?? 0;
-    final lastPercent = _lastNotificationPercent[key];
-    if (lastPercent == null) return true;
-    if (percent == 100) return true;
-    if (nowMs - lastMs >= 1000 && percent != lastPercent) return true;
-    if ((percent - lastPercent).abs() >= 5 && nowMs - lastMs >= 500) {
-      return true;
-    }
-    return false;
-  }
-
-  int _notificationIdForKey(String key) {
-    return key.hashCode & 0x7fffffff;
   }
 
   void _handleQualityEvent(UIConnectionQualityUpdate event) {
@@ -238,31 +208,55 @@ class TeleportStore extends ChangeNotifier {
     void Function(String)? onError,
   }) async {
     final id = _transferId(peer, name);
+    // Unique ID for notifications based on the transfer ID
+    final notificationId = id.hashCode & 0x7fffffff;
+
     _uploadProgress[id] = TransferProgress(peer: peer, name: name);
     notifyListeners();
 
-    await FileSender.sendFile(
-      state: state,
-      peer: peer,
-      name: name,
-      source: source,
-      onProgress: (_, offset, size, bytesPerSecond) {
-        final current = _uploadProgress[id];
-        if (current == null) return;
-        current.update(offset, size, bytesPerSecond);
-        notifyListeners();
-      },
-      onDone: () {
-        _uploadProgress.remove(id);
-        notifyListeners();
-        onDone?.call();
-      },
-      onError: (msg) {
-        _uploadProgress.remove(id);
-        notifyListeners();
-        onError?.call(msg);
-      },
-    );
+    try {
+      final stream = state.sendFile(peer: peer, name: name, source: source);
+
+      stream.listen((event) {
+        event.when(
+          progress: (offset, size, bytesPerSecond) {
+            final current = _uploadProgress[id];
+            if (current != null) {
+              current.update(offset, size, bytesPerSecond);
+              notifyListeners();
+
+              if (isAndroid && size > BigInt.zero) {
+                final percent = ((offset / size) * 100).toInt().clamp(0, 100);
+                NotificationService().updateTransferProgress(
+                  id: notificationId,
+                  title: "Sending $name",
+                  body: "$percent%",
+                  progress: percent,
+                );
+              }
+            }
+          },
+          done: () {
+            _uploadProgress.remove(id);
+            NotificationService().cancelTransferProgress(notificationId);
+            NotificationService().showFileSent(name);
+            notifyListeners();
+            onDone?.call();
+          },
+          error: (msg) {
+            _uploadProgress.remove(id);
+            NotificationService().cancelTransferProgress(notificationId);
+            NotificationService().showError(name, "Send failed: $msg");
+            notifyListeners();
+            onError?.call(msg);
+          },
+        );
+      });
+    } catch (e) {
+      _uploadProgress.remove(id);
+      notifyListeners();
+      onError?.call(e.toString());
+    }
   }
 
   String _transferId(String peer, String name) {

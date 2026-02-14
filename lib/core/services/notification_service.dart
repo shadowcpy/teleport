@@ -114,6 +114,44 @@ class NotificationService {
     );
   }
 
+  final Map<int, int> _lastUpdateMs = {};
+  final Map<int, int> _lastUpdatePercent = {};
+
+  Future<void> updateTransferProgress({
+    required int id,
+    required String title,
+    required String body,
+    required int progress,
+  }) async {
+    if (!Platform.isAndroid) return;
+
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final lastMs = _lastUpdateMs[id] ?? 0;
+    final lastPercent = _lastUpdatePercent[id];
+
+    if (!_shouldUpdate(lastPercent, progress, lastMs, nowMs)) return;
+
+    _lastUpdateMs[id] = nowMs;
+    _lastUpdatePercent[id] = progress;
+
+    await showTransferProgress(
+      id: id,
+      title: title,
+      body: body,
+      progress: progress,
+    );
+  }
+
+  bool _shouldUpdate(int? lastPercent, int percent, int lastMs, int nowMs) {
+    if (lastPercent == null) return true;
+    if (percent == 100) return true;
+    if (nowMs - lastMs >= 1000 && percent != lastPercent) return true;
+    if ((percent - lastPercent).abs() >= 5 && nowMs - lastMs >= 500) {
+      return true;
+    }
+    return false;
+  }
+
   Future<void> showTransferProgress({
     required int id,
     required String title,
@@ -146,6 +184,8 @@ class NotificationService {
   }
 
   Future<void> cancelTransferProgress(int id) async {
+    _lastUpdateMs.remove(id);
+    _lastUpdatePercent.remove(id);
     await _flutterLocalNotificationsPlugin.cancel(id: id);
   }
 }
