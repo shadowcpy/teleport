@@ -12,8 +12,8 @@ use crate::{
     service::{ConfigManager, ConfigReply, ConfigRequest, ConnQualityActor, ConnQualityRequest},
 };
 
-const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
-const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(5);
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(1);
+const KEEPALIVE_TIMEOUT: Duration = Duration::from_secs(1);
 const RECONNECT_DELAY: Duration = Duration::from_secs(5);
 const PEER_SCAN_INTERVAL: Duration = Duration::from_secs(10);
 

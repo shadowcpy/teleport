@@ -9,11 +9,11 @@ use tracing::{info, warn};
 use crate::{
     api::teleport::{InboundPair, PairingResponse, UIPairReaction, UIPromise, UIResolver},
     frb_generated::{RustAutoOpaque, StreamSink},
-    promise::{Promise, PromiseResolver, init_promise},
     protocol::{
         framed::FramedBiStream,
         pair::{self, MAX_SIZE, Pair},
     },
+    util::promise::{Promise, PromiseResolver, init_promise},
 };
 
 use super::{ConfigManager, ConfigReply, ConfigRequest, Peer};

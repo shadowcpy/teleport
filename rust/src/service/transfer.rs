@@ -1,10 +1,4 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    os::unix::io::FromRawFd,
-    path::PathBuf,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, os::unix::io::FromRawFd, path::PathBuf, sync::Arc};
 
 use anyhow::{Result, bail};
 use futures_util::SinkExt;
@@ -28,6 +22,7 @@ use crate::{
             SendResponse,
         },
     },
+    util::speed::SpeedTracker,
 };
 
 use super::{ConfigManager, ConfigReply, ConfigRequest, ConnQualityActor, ConnQualityRequest};
@@ -60,63 +55,6 @@ impl Actor for TransferActor {
             peer_cache: HashMap::new(),
             inbound_speed: HashMap::new(),
         })
-    }
-}
-
-const SPEED_WINDOW: Duration = Duration::from_millis(1200);
-
-struct SpeedSample {
-    timestamp: Instant,
-    offset: u64,
-}
-
-struct SpeedTracker {
-    samples: VecDeque<SpeedSample>,
-}
-
-impl SpeedTracker {
-    fn new(now: Instant, offset: u64) -> Self {
-        let mut samples = VecDeque::new();
-        samples.push_back(SpeedSample {
-            timestamp: now,
-            offset,
-        });
-        Self { samples }
-    }
-
-    fn update(&mut self, now: Instant, offset: u64) -> f64 {
-        self.samples.push_back(SpeedSample { timestamp: now, offset });
-
-        while self.samples.len() > 2 {
-            if let Some(oldest) = self.samples.front() {
-                if now.duration_since(oldest.timestamp) > SPEED_WINDOW {
-                    self.samples.pop_front();
-                    continue;
-                }
-            }
-            break;
-        }
-
-        if self.samples.len() < 2 {
-            return 0.0;
-        }
-
-        let oldest = self.samples.front().unwrap();
-        let newest = self.samples.back().unwrap();
-        let delta_secs = newest
-            .timestamp
-            .duration_since(oldest.timestamp)
-            .as_secs_f64();
-        if delta_secs <= 0.0 {
-            return 0.0;
-        }
-
-        let delta_bytes = newest.offset.saturating_sub(oldest.offset) as f64;
-        if delta_bytes <= 0.0 {
-            return 0.0;
-        }
-
-        delta_bytes / delta_secs
     }
 }
 
@@ -204,7 +142,7 @@ impl Message<SendFileRequest> for TransferActor {
                 }
 
                 let mut offset = 0u64;
-                let mut speed = SpeedTracker::new(Instant::now(), offset);
+                let mut speed_tracker = SpeedTracker::new();
                 let mut buffer = vec![0u8; CHUNK_SIZE];
                 loop {
                     let n = reader.read(&mut buffer).await?;
@@ -225,7 +163,9 @@ impl Message<SendFileRequest> for TransferActor {
 
                     offset += n as u64;
 
-                    let bytes_per_second = speed.update(Instant::now(), offset);
+                    speed_tracker.update_now(offset);
+                    let bytes_per_second = speed_tracker.speed();
+
                     ui.add(OutboundFileStatus::Progress {
                         offset,
                         size,
@@ -317,12 +257,14 @@ impl TransferActor {
         let speed_key = format!("{peer_id}/{file_name}");
         match file_event.status {
             FileStatus::Progress { offset, size } => {
-                let now = Instant::now();
                 let tracker = self
                     .inbound_speed
                     .entry(speed_key)
-                    .or_insert_with(|| SpeedTracker::new(now, offset));
-                let bytes_per_second = tracker.update(now, offset);
+                    .or_insert_with(|| SpeedTracker::new());
+
+                tracker.update_now(offset);
+                let bytes_per_second = tracker.speed();
+
                 ui.add(InboundFileEvent {
                     peer: peer_id.to_string(),
                     peer_name,

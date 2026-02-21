@@ -8,11 +8,11 @@ use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::Subscriber
 
 use crate::{
     frb_generated::{RustAutoOpaque, StreamSink},
-    promise::{self, Promise, PromiseResolver},
     service::{
         AppSupervisor, AppSupervisorArgs, PairWithRequest, PairWithResponse, PeerInfo,
         SendFileRequest, UIRequest, UIResponse,
     },
+    util::promise::{self, Promise, PromiseResolver},
 };
 
 #[frb]
@@ -198,7 +198,10 @@ pub enum InboundFileStatus {
         size: u64,
         bytes_per_second: f64,
     },
-    Done { path: String, name: String },
+    Done {
+        path: String,
+        name: String,
+    },
     Error(String),
 }
 

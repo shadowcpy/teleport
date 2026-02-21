@@ -12,9 +12,9 @@ use tracing::info;
 
 use crate::{
     api::teleport::UIPairReaction,
-    promise::init_promise,
     protocol::framed::FramedBiStream,
     service::{AppSupervisor, PairingReply, PairingRequest, Peer},
+    util::promise::init_promise,
 };
 
 pub const ALPN: &[u8] = b"teleport/pair/0";
