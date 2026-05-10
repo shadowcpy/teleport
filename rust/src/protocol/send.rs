@@ -4,10 +4,9 @@ use anyhow::{Result, bail};
 use futures_util::{SinkExt, TryStreamExt};
 use iroh::{
     EndpointId,
-    endpoint::Connection,
+    endpoint::{Connection, VarInt},
     protocol::{AcceptError, ProtocolHandler},
 };
-use iroh_quinn_proto::VarInt;
 use kameo::actor::ActorRef;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -21,7 +20,7 @@ use tracing::{error, info};
 
 use crate::{
     protocol::framed::FramedBiStream,
-    service::{AppSupervisor, TransferReply, TransferRequest},
+    service::{AppSupervisor, ConnQualityRequest, TransferReply, TransferRequest},
 };
 
 pub const ALPN: &[u8] = b"teleport/send/1";
@@ -129,6 +128,13 @@ impl ProtocolHandler for SendAcceptor {
         let mut framed = FramedBiStream::new((send, recv), MAX_MSG_SIZE);
         let app = self.app.clone();
         let peer_id = connection.remote_id();
+
+        app.tell(ConnQualityRequest::StartTracking {
+            peer: peer_id,
+            handle: connection.weak_handle(),
+        })
+        .await
+        .ok();
 
         spawn(async move {
             let action = async {

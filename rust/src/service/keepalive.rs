@@ -116,7 +116,7 @@ async fn run_keepalive(
         conn_quality
             .tell(ConnQualityRequest::StartTracking {
                 peer,
-                conn_info: conn.to_info(),
+                handle: conn.weak_handle(),
             })
             .await
             .ok();

@@ -57,7 +57,7 @@ class _OnboardingState extends State<Onboarding> {
   }
 
   Future<void> _selectTargetDirectory() async {
-    String? target = await FilePicker.platform.getDirectoryPath(
+    String? target = await FilePicker.getDirectoryPath(
       dialogTitle: "Select download folder",
     );
 

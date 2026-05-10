@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use anyhow::Result;
 use iroh::{EndpointId, SecretKey};
 use kameo::prelude::*;
-use rand::rng;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::info;
@@ -27,7 +26,7 @@ pub struct Peer {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            key: SecretKey::generate(&mut rng()),
+            key: SecretKey::generate(),
             target_dir: None,
             peers: vec![],
             name: "Unnamed".into(),

@@ -24,7 +24,7 @@ class _SendPageState extends State<SendPage> {
   Future<void> _handleSendFile(TeleportStore store) async {
     if (_selectedPeer == null) return;
 
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.pickFiles();
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;

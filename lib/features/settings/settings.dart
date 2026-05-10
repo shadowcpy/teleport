@@ -124,7 +124,7 @@ class _SettingsState extends State<Settings>
   }
 
   Future<void> _selectDownloadDirectory() async {
-    final path = await FilePicker.platform.getDirectoryPath(
+    final path = await FilePicker.getDirectoryPath(
       dialogTitle: 'Select download folder',
     );
 

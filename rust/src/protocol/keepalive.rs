@@ -54,7 +54,7 @@ impl ProtocolHandler for KeepAliveAcceptor {
 
         app.tell(ConnQualityRequest::StartTracking {
             peer: peer_id,
-            conn_info: connection.to_info(),
+            handle: connection.weak_handle(),
         })
         .await
         .ok();

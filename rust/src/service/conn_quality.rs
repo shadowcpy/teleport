@@ -3,7 +3,10 @@ use std::{collections::HashMap, time::Duration};
 use anyhow::Result;
 use flutter_rust_bridge::JoinHandle;
 use futures_util::StreamExt;
-use iroh::{EndpointId, Watcher, endpoint::ConnectionInfo};
+use iroh::{
+    EndpointId,
+    endpoint::{Connection, PathEvent, WeakConnectionHandle},
+};
 use kameo::prelude::*;
 use tokio::spawn;
 
@@ -42,11 +45,14 @@ pub enum ConnQualityRequest {
     Subscription(StreamSink<UIConnectionQualityUpdate>),
     StartTracking {
         peer: EndpointId,
-        conn_info: ConnectionInfo,
+        handle: WeakConnectionHandle,
     },
     ConnectionQualityUpdate {
         peer: EndpointId,
         update: ConnQuality,
+    },
+    TrackingEnded {
+        peer: EndpointId,
     },
 }
 
@@ -68,27 +74,64 @@ impl Message<ConnQualityRequest> for ConnQualityActor {
                 self.subscription = Some(sub);
                 ConnQualityReply::Ack
             }
-            ConnQualityRequest::StartTracking { peer, conn_info } => {
+            ConnQualityRequest::StartTracking { peer, handle } => {
                 if self.tasks.contains_key(&peer) {
                     return ConnQualityReply::Ack;
                 }
-                let watcher = conn_info.paths();
                 let this = self.this.clone();
                 let handle = spawn(async move {
-                    let mut stream = watcher.stream();
-                    while let Some(update) = stream.next().await {
-                        let selected = update.iter().find(|p| p.is_selected());
-                        let update = match selected {
-                            Some(path) => match path.is_ip() {
-                                true => ConnQuality::Direct(path.rtt()),
-                                false => ConnQuality::Relay(path.rtt()),
-                            },
-                            None => ConnQuality::None,
-                        };
-                        this.tell(ConnQualityRequest::ConnectionQualityUpdate { peer, update })
+                    let Some(conn) = handle.upgrade() else {
+                        this.tell(ConnQualityRequest::ConnectionQualityUpdate {
+                            peer,
+                            update: ConnQuality::None,
+                        })
+                        .await
+                        .ok();
+                        this.tell(ConnQualityRequest::TrackingEnded { peer })
                             .await
-                            .unwrap();
+                            .ok();
+                        return;
+                    };
+
+                    let mut events = conn.path_events();
+                    let update = selected_quality(&conn);
+                    drop(conn);
+
+                    this.tell(ConnQualityRequest::ConnectionQualityUpdate { peer, update })
+                        .await
+                        .ok();
+
+                    while let Some(event) = events.next().await {
+                        match event {
+                            PathEvent::Opened { .. }
+                            | PathEvent::Selected { .. }
+                            | PathEvent::Closed { .. }
+                            | PathEvent::Lagged { .. } => {
+                                let update = handle
+                                    .upgrade()
+                                    .map(|conn| selected_quality(&conn))
+                                    .unwrap_or(ConnQuality::None);
+
+                                this.tell(ConnQualityRequest::ConnectionQualityUpdate {
+                                    peer,
+                                    update,
+                                })
+                                .await
+                                .ok();
+                            }
+                            _ => {}
+                        }
                     }
+
+                    this.tell(ConnQualityRequest::ConnectionQualityUpdate {
+                        peer,
+                        update: ConnQuality::None,
+                    })
+                    .await
+                    .ok();
+                    this.tell(ConnQualityRequest::TrackingEnded { peer })
+                        .await
+                        .ok();
                 });
                 self.tasks.insert(peer, handle);
                 ConnQualityReply::Ack
@@ -112,6 +155,25 @@ impl Message<ConnQualityRequest> for ConnQualityActor {
                 }
                 ConnQualityReply::Ack
             }
+            ConnQualityRequest::TrackingEnded { peer } => {
+                self.tasks.remove(&peer);
+                ConnQualityReply::Ack
+            }
         }
+    }
+}
+
+fn selected_quality(conn: &Connection) -> ConnQuality {
+    let paths = conn.paths();
+    let Some(path) = paths.iter().find(|p| p.is_selected()) else {
+        return ConnQuality::None;
+    };
+
+    if path.is_ip() {
+        ConnQuality::Direct(path.rtt())
+    } else if path.is_relay() {
+        ConnQuality::Relay(path.rtt())
+    } else {
+        ConnQuality::None
     }
 }

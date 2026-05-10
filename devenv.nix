@@ -33,9 +33,6 @@
   android = {
     enable = true;
     platforms.version = [
-      "33"
-      "34"
-      "35"
       "36"
     ];
     flutter.enable = true;

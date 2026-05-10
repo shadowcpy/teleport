@@ -117,7 +117,7 @@ impl Message<SendFileRequest> for TransferActor {
                 conn_quality
                     .tell(ConnQualityRequest::StartTracking {
                         peer,
-                        conn_info: conn.to_info(),
+                        handle: conn.weak_handle(),
                     })
                     .await
                     .unwrap();
